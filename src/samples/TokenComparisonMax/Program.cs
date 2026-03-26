@@ -104,8 +104,7 @@ var liveTable = new Table()
     .AddColumn(new TableColumn("[bold]Standard[/]").RightAligned())
     .AddColumn(new TableColumn("[bold]Routed[/]").RightAligned())
     .AddColumn(new TableColumn("[bold]Saved[/]").RightAligned())
-    .AddColumn(new TableColumn("[bold]Savings %[/]").RightAligned())
-    .AddColumn(new TableColumn("[bold]💰 Saved[/]").RightAligned());
+    .AddColumn(new TableColumn("[bold]Savings %[/]").RightAligned());
 
 await AnsiConsole.Live(liveTable)
     .AutoClear(false)
@@ -123,7 +122,6 @@ await AnsiConsole.Live(liveTable)
                 $"[yellow]{domain}[/]",
                 $"[yellow]{Truncate(prompt, 38)}[/]",
                 "[dim]running...[/]",
-                "[dim]...[/]",
                 "[dim]...[/]",
                 "[dim]...[/]",
                 "[dim]...[/]");
@@ -175,7 +173,6 @@ await AnsiConsole.Live(liveTable)
             liveTable.Rows.Update(liveTable.Rows.Count - 1, 4, new Markup($"[green]{rtdInput:N0}[/]"));
             liveTable.Rows.Update(liveTable.Rows.Count - 1, 5, new Markup($"[cyan]{saved:N0}[/]"));
             liveTable.Rows.Update(liveTable.Rows.Count - 1, 6, new Markup($"[bold magenta]{pct:F1}%[/]"));
-            liveTable.Rows.Update(liveTable.Rows.Count - 1, 7, new Markup($"[green]${moneySaved:F4}[/]"));
             ctx.Refresh();
         }
     });
@@ -196,8 +193,7 @@ var summaryTable = new Table()
     .AddColumn(new TableColumn("[bold]Standard Tokens[/]").RightAligned())
     .AddColumn(new TableColumn("[bold]Routed Tokens[/]").RightAligned())
     .AddColumn(new TableColumn("[bold]Tokens Saved[/]").RightAligned())
-    .AddColumn(new TableColumn("[bold]Savings[/]").RightAligned())
-    .AddColumn(new TableColumn("[bold]💰 Cost Saved[/]").RightAligned());
+    .AddColumn(new TableColumn("[bold]Savings[/]").RightAligned());
 
 for (int i = 0; i < results.Count; i++)
 {
@@ -209,8 +205,7 @@ for (int i = 0; i < results.Count; i++)
         $"[red]{r.StandardTokens:N0}[/]",
         $"[green]{r.RoutedTokens:N0}[/]",
         $"[cyan]{r.Saved:N0}[/]",
-        $"[bold magenta]{r.Pct:F1}%[/]",
-        $"[green]${r.MoneySaved:F4}[/]");
+        $"[bold magenta]{r.Pct:F1}%[/]");
 }
 
 // Totals row
@@ -228,19 +223,46 @@ summaryTable.AddRow(
     $"[bold red]{totalStd:N0}[/]",
     $"[bold green]{totalRtd:N0}[/]",
     $"[bold cyan]{totalSaved:N0}[/]",
-    $"[bold yellow on black] {totalPct:F1}% [/]",
-    $"[bold green]${totalMoneySaved:F4}[/]");
+    $"[bold yellow on black] {totalPct:F1}% [/]");
 
 AnsiConsole.Write(summaryTable);
 AnsiConsole.WriteLine();
 
-// ── Highlight panel ──────────────────────────────────────────────────
+// ── Production-Scale Cost Projections ─────────────────────────────
+var savedTokensPerCall = totalSaved / results.Count;
+var costSavedPerCall = totalMoneySaved / results.Count;
+
+var projectionTable = new Table()
+    .Border(TableBorder.Rounded)
+    .BorderColor(Color.Yellow)
+    .Title("[bold yellow]💰 Projected Savings at Production Scale[/]")
+    .AddColumn(new TableColumn("[bold]Daily Calls[/]").RightAligned())
+    .AddColumn(new TableColumn("[bold]Tokens Saved / Day[/]").RightAligned())
+    .AddColumn(new TableColumn("[bold]Monthly Savings[/]").RightAligned())
+    .AddColumn(new TableColumn("[bold]Yearly Savings[/]").RightAligned());
+
+int[] scales = [100, 1_000, 10_000, 100_000, 1_000_000];
+foreach (var daily in scales)
+{
+    var dailyTokens = (long)savedTokensPerCall * daily;
+    var monthlyCost = costSavedPerCall * daily * 30;
+    var yearlyCost = costSavedPerCall * daily * 365;
+    projectionTable.AddRow(
+        $"[white]{daily:N0}[/]",
+        $"[cyan]{dailyTokens:N0}[/]",
+        $"[green]${monthlyCost:F2}[/]",
+        $"[bold green]${yearlyCost:F2}[/]");
+}
+
+AnsiConsole.Write(projectionTable);
+AnsiConsole.WriteLine();
+
 AnsiConsole.Write(new Panel(
     $"[bold]By routing {mcpTools.Length} tools through MCPToolRouter, " +
-    $"you save [cyan]{totalSaved:N0}[/] input tokens across {results.Count} calls.\n" +
-    $"That's an average of [magenta]{totalPct:F1}%[/] savings per request!\n" +
-    $"Estimated cost savings: [green]${totalMoneySaved:F4}[/] per {results.Count} calls " +
-    $"(based on GPT-5-mini pricing as of March 2026)[/]")
+    $"you save [cyan]{totalSaved:N0}[/] input tokens across {results.Count} calls " +
+    $"([magenta]{totalPct:F1}%[/] average savings per request).\n" +
+    $"At [yellow]10,000 calls/day[/], that's [bold green]${costSavedPerCall * 10_000 * 30:F2}/month[/] saved " +
+    $"on GPT-5-mini pricing![/]")
     .Header("[bold yellow]💰 Bottom Line[/]")
     .Border(BoxBorder.Double)
     .BorderColor(Color.Yellow)

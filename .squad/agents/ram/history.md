@@ -15,3 +15,7 @@
 - Set up Publish workflow (publish.yml) with OIDC trusted publishing (no API key secrets), version extraction from tags/inputs, and per-project packing for MCPToolRouter
 - images/ directory already existed; nuget_logo.png to be added manually by Bruno
 - All workflows use solution-level operations against ElBruno.ModelContextProtocol.slnx as per conventions
+- Added "How It Works" section explaining MCPToolRouter's semantic search process: ingestion, embedding, query embedding, similarity search, and tool selection
+- Added comprehensive "Samples" section with overview table and three sample applications: BasicUsage (no Azure), TokenComparison (marquee sample showing ~72% token savings), and FilteredFunctionCalling (end-to-end pattern)
+- Used dotnet user-secrets CLI format (not XML PackageReference) for Azure OpenAI configuration instructions per conventions
+- Positioned new sections between "Quick Start" and "Building from Source" to maintain README structure and flow

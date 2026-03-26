@@ -58,3 +58,42 @@
   - SearchAsync filters by minScore
   - SearchAsync respects topK limit
 
+### Sample Applications Created (2025-03-26)
+Created three comprehensive sample applications demonstrating the library:
+
+1. **BasicUsage** (`src/samples/BasicUsage/`)
+   - Simple console app with no external dependencies
+   - Demonstrates core library functionality: creating ToolIndex, performing semantic search
+   - Shows topK and minScore filtering
+   - Targets net8.0 only (per convention for samples)
+
+2. **TokenComparison** (`src/samples/TokenComparison/`)
+   - Key value proposition demo: measures token savings
+   - Compares sending ALL tools vs. filtered tools (via MCPToolRouter) to Azure OpenAI
+   - Uses Azure.AI.OpenAI 2.1.0 SDK (OpenAI.Chat namespace)
+   - Configuration via user secrets: AzureOpenAI:Endpoint, ApiKey, DeploymentName
+   - Demonstrates 60-80% input token savings with 18 tools → top 3
+   - Targets net8.0
+
+3. **FilteredFunctionCalling** (`src/samples/FilteredFunctionCalling/`)
+   - End-to-end practical workflow: filter tools → call LLM → execute tools → final response
+   - Shows complete function calling integration with Azure OpenAI
+   - 5 tools with stub implementations (get_weather, send_email, calculate, search_files, translate)
+   - Uses dictionary-based tool definitions with implementations
+   - Same user secrets pattern as TokenComparison
+   - Targets net8.0
+
+**Technical Notes:**
+- All samples reference the library via ProjectReference
+- Azure OpenAI samples use `Azure.AI.OpenAI` 2.1.0 directly (not Microsoft.Extensions.AI.OpenAI)
+- API: `AzureOpenAIClient.GetChatClient()` returns `OpenAI.Chat.ChatClient`
+- ChatTool, ChatCompletionOptions, UserChatMessage from `OpenAI.Chat` namespace
+- Each sample includes README.md with setup instructions
+- Solution file (`.slnx`) updated with `/src/samples/` folder containing all three projects
+
+**Build Verification:**
+- ✅ All projects build successfully in Release mode (net8.0)
+- ✅ No warnings or errors
+- ✅ Samples compile but require Azure credentials to run
+
+

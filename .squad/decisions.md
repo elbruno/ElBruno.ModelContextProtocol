@@ -84,6 +84,65 @@ All other tests use the shared fixture for performance optimization.
 
 ---
 
+### 3. Azure.AI.OpenAI SDK Usage
+
+**Date:** 2026-03-26  
+**Agent:** Tron  
+**Status:** Implemented
+
+#### Context
+
+Sample applications (`TokenComparison` and `FilteredFunctionCalling`) needed to integrate with Azure OpenAI to demonstrate the MCPToolRouter library's token-saving capabilities.
+
+#### Decision
+
+Use `Azure.AI.OpenAI` 2.1.0 **directly** instead of the `Microsoft.Extensions.AI.OpenAI` abstraction layer.
+
+#### Rationale
+
+- **API Stability:** Azure.AI.OpenAI 2.1.0 has stable, well-documented APIs
+- **Compatibility:** Microsoft.Extensions.AI.OpenAI had breaking API changes between versions (9.1.1 → 10.3.0)
+- **Simplicity:** Direct SDK usage is more straightforward for sample code
+- **Token Usage Access:** `ChatCompletion.Usage` properties directly accessible for measuring token savings
+- **No Extra Dependencies:** Fewer packages to manage
+
+#### API Pattern Used
+
+```csharp
+using Azure;
+using Azure.AI.OpenAI;
+using OpenAI.Chat;
+
+var azureClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
+var chatClient = azureClient.GetChatClient(deploymentName);
+
+var options = new ChatCompletionOptions();
+options.Tools.Add(ChatTool.CreateFunctionTool(name, description));
+
+var response = await chatClient.CompleteChatAsync(
+    [new UserChatMessage(userPrompt)],
+    options);
+
+var inputTokens = response.Value.Usage.InputTokenCount;
+```
+
+#### Impact
+
+- Sample code is clearer and easier to understand
+- Token usage measurements are straightforward
+- No abstraction layer complexity for educational samples
+- May need updates if Azure.AI.OpenAI 3.x introduces breaking changes (future)
+
+#### Alternative Considered
+
+Using `Microsoft.Extensions.AI.OpenAI` with `IChatClient` abstraction was attempted but:
+- Breaking API changes between versions
+- `AsBuilder()` and `UseFunctionInvocation()` methods not available
+- Increased complexity for sample code
+- Less direct access to token usage metrics
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

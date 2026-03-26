@@ -1,3 +1,21 @@
 # Squad: ignore generated logs
 .squad/orchestration-log/
 .squad/log/
+
+# .NET build outputs
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+
+# User secrets
+secrets.json
+
+# IDE
+.vs/
+*.user
+*.suo
+
+# OS
+Thumbs.db
+.DS_Store

@@ -31,18 +31,53 @@ dotnet add package ElBruno.ModelContextProtocol.MCPToolRouter
 using ElBruno.ModelContextProtocol.MCPToolRouter;
 using ModelContextProtocol.Protocol;
 
+// 1. Define your MCP tools
 var tools = new[]
 {
     new Tool { Name = "get_weather", Description = "Get weather for a location" },
-    new Tool { Name = "send_email", Description = "Send an email" },
-    new Tool { Name = "search_files", Description = "Search files by name" }
+    new Tool { Name = "send_email", Description = "Send an email message" },
+    new Tool { Name = "search_files", Description = "Search files by name or content" },
+    new Tool { Name = "calculate", Description = "Perform mathematical calculations" },
+    new Tool { Name = "translate_text", Description = "Translate text between languages" }
 };
 
+// 2. Create the index and find relevant tools
 await using var index = await ToolIndex.CreateAsync(tools);
-var results = await index.SearchAsync("What's the temperature outside?", topK: 2);
+var results = await index.SearchAsync("What's the temperature outside?", topK: 3);
 
 foreach (var result in results)
     Console.WriteLine($"{result.Tool.Name}: {result.Score:F3}");
+```
+
+### Using Filtered Tools with Azure OpenAI
+
+```csharp
+using Azure;
+using Azure.AI.OpenAI;
+using OpenAI.Chat;
+
+// Create Azure OpenAI client
+var client = new AzureOpenAIClient(
+    new Uri("https://your-resource.openai.azure.com/"),
+    new AzureKeyCredential("your-api-key"));
+var chatClient = client.GetChatClient("gpt-5-mini");
+
+// Route to relevant tools only (instead of sending ALL tools)
+var relevantTools = await index.SearchAsync(userPrompt, topK: 3);
+
+// Convert filtered tools to ChatTools
+var options = new ChatCompletionOptions();
+foreach (var result in relevantTools)
+{
+    options.Tools.Add(ChatTool.CreateFunctionTool(
+        result.Tool.Name,
+        result.Tool.Description ?? string.Empty));
+}
+
+// Call the LLM with only the relevant tools — saving tokens!
+var response = await chatClient.CompleteChatAsync(
+    [new UserChatMessage(userPrompt)],
+    options);
 ```
 
 ## How It Works
@@ -59,13 +94,15 @@ This approach enables intelligent tool selection at LLM prompt time without exte
 
 ## Samples
 
-Three sample applications showcase different use cases for MCPToolRouter:
+Five sample applications showcase different use cases for MCPToolRouter:
 
 | Sample | Description | Azure Required |
 |--------|-------------|:-:|
 | [BasicUsage](src/samples/BasicUsage/) | Getting started — index tools and search | ❌ |
 | [TokenComparison](src/samples/TokenComparison/) | Compare token usage: all tools vs. routed | ✅ |
+| [TokenComparisonMax](src/samples/TokenComparisonMax/) | Extreme 120+ tools scenario with rich Spectre.Console UX | ✅ |
 | [FilteredFunctionCalling](src/samples/FilteredFunctionCalling/) | End-to-end function calling with filtered tools | ✅ |
+| [AgentWithToolRouter](src/samples/AgentWithToolRouter/) | Microsoft Agent Framework with semantic tool routing | ✅ |
 
 ### BasicUsage
 
@@ -105,6 +142,31 @@ Replace:
 - `your-api-key` with your API key
 - Deployment name with your model (e.g., `gpt-5-mini`)
 
+### TokenComparisonMax
+
+An extreme-scale demo with **120+ tool definitions** across 12 categories, showcasing the dramatic token savings at scale. Uses [Spectre.Console](https://spectreconsole.net/) for a rich terminal experience with live-updating tables and a comprehensive summary.
+
+**Features:**
+- 120+ realistic MCP tool definitions
+- Real-time token usage tracking with live tables
+- Final summary table with per-scenario and aggregate savings
+- Beautiful terminal UI via Spectre.Console
+
+**Azure OpenAI Setup:**
+
+```bash
+cd src/samples/TokenComparisonMax
+dotnet user-secrets init
+dotnet user-secrets set "AzureOpenAI:Endpoint" "https://your-resource.openai.azure.com/"
+dotnet user-secrets set "AzureOpenAI:ApiKey" "your-api-key"
+dotnet user-secrets set "AzureOpenAI:DeploymentName" "gpt-5-mini"
+```
+
+Replace:
+- `your-resource` with your Azure OpenAI resource name
+- `your-api-key` with your API key
+- Deployment name with your model (e.g., `gpt-5-mini`)
+
 ### FilteredFunctionCalling
 
 An end-to-end example of the real-world pattern: route tools with MCPToolRouter, send only the filtered tools to Azure OpenAI, and handle tool call responses.
@@ -113,6 +175,26 @@ An end-to-end example of the real-world pattern: route tools with MCPToolRouter,
 
 ```bash
 cd src/samples/FilteredFunctionCalling
+dotnet user-secrets init
+dotnet user-secrets set "AzureOpenAI:Endpoint" "https://your-resource.openai.azure.com/"
+dotnet user-secrets set "AzureOpenAI:ApiKey" "your-api-key"
+dotnet user-secrets set "AzureOpenAI:DeploymentName" "gpt-5-mini"
+```
+
+### AgentWithToolRouter
+
+Demonstrates MCPToolRouter integrated with the [Microsoft Agent Framework](https://github.com/microsoft/agent-framework) (`Microsoft.Agents.AI.OpenAI`). The sample defines 11 function tools, uses semantic routing to filter relevant tools per prompt, and creates an `AIAgent` with only the filtered tools — showing how tool routing works with the modern agent paradigm.
+
+**Features:**
+- 11 function tools across 6 domains (weather, email, calendar, files, math, translation)
+- Semantic tool routing via MCPToolRouter before agent creation
+- Multi-turn session demo with conversation memory
+- Supports both API key and `DefaultAzureCredential` authentication
+
+**Azure OpenAI Setup:**
+
+```bash
+cd src/samples/AgentWithToolRouter
 dotnet user-secrets init
 dotnet user-secrets set "AzureOpenAI:Endpoint" "https://your-resource.openai.azure.com/"
 dotnet user-secrets set "AzureOpenAI:ApiKey" "your-api-key"

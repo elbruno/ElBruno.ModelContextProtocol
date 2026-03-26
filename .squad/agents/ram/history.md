@@ -19,3 +19,6 @@
 - Added comprehensive "Samples" section with overview table and three sample applications: BasicUsage (no Azure), TokenComparison (marquee sample showing ~72% token savings), and FilteredFunctionCalling (end-to-end pattern)
 - Used dotnet user-secrets CLI format (not XML PackageReference) for Azure OpenAI configuration instructions per conventions
 - Positioned new sections between "Quick Start" and "Building from Source" to maintain README structure and flow
+- Created detailed `docs/image-prompts.md` with 4 image generation prompts (NuGet logo, YouTube thumbnail, blog header, social card) including DALL-E prompts, color palettes, technical specs, visual guidelines
+- Updated README.md samples table and section to include TokenComparisonMax (120+ tools scenario with Spectre.Console UX)
+- Changed samples count from "Three sample applications" to "Four sample applications" in README intro text

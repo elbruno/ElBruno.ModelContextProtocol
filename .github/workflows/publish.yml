@@ -22,7 +22,9 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: |
+            8.0.x
+            10.0.x
       - name: Determine version
         id: version
         run: |
@@ -36,23 +38,30 @@ jobs:
             # Extract from csproj
             VERSION=$(grep -m1 '<Version>' src/ElBruno.ModelContextProtocol.MCPToolRouter/ElBruno.ModelContextProtocol.MCPToolRouter.csproj | grep -oP '(?<=>)[^<]*' || echo "0.1.0")
           fi
-          
-          # Validate version format
-          if [[ ! $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+
+          # Validate version format (allow pre-release suffixes like -preview.1)
+          if [[ ! $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
             echo "Invalid version: $VERSION"
             exit 1
           fi
-          
+
           echo "version=$VERSION" >> $GITHUB_OUTPUT
       - name: Restore
-        run: dotnet restore ElBruno.ModelContextProtocol.slnx -p:TargetFrameworks=net8.0
+        run: dotnet restore ElBruno.ModelContextProtocol.slnx
       - name: Build
-        run: dotnet build ElBruno.ModelContextProtocol.slnx -c Release --no-restore -p:TargetFrameworks=net8.0 -p:Version=${{ steps.version.outputs.version }}
+        run: dotnet build ElBruno.ModelContextProtocol.slnx -c Release --no-restore -p:Version=${{ steps.version.outputs.version }}
       - name: Test
         run: dotnet test ElBruno.ModelContextProtocol.slnx -c Release --no-build --framework net8.0
       - name: Pack
         run: |
-          dotnet pack src/ElBruno.ModelContextProtocol.MCPToolRouter/ElBruno.ModelContextProtocol.MCPToolRouter.csproj -c Release --no-build -p:TargetFrameworks=net8.0 -p:Version=${{ steps.version.outputs.version }} --output ./nupkgs
+          dotnet pack src/ElBruno.ModelContextProtocol.MCPToolRouter/ElBruno.ModelContextProtocol.MCPToolRouter.csproj \
+            -c Release --no-build \
+            -p:Version=${{ steps.version.outputs.version }} \
+            --output ./nupkgs
+      - name: Verify package contents
+        run: |
+          echo "📦 Package contents:"
+          unzip -l ./nupkgs/*.nupkg | grep -E '(nuget_logo|README|\.dll|\.nuspec)'
       - name: NuGet login (OIDC trusted publishing)
         uses: NuGet/login@v1
         id: nuget-login

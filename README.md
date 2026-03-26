@@ -167,6 +167,18 @@ Replace:
 - `your-api-key` with your API key
 - Deployment name with your model (e.g., `gpt-5-mini`)
 
+> **💰 Cost Estimation:** The TokenComparisonMax sample calculates estimated money saved based on Azure OpenAI pricing for GPT-5-mini (as of March 2026):
+>
+> | Token Type | Cost per 1M Tokens |
+> |---|---|
+> | Input | $0.25 |
+> | Output | $2.00 |
+> | Cached Input | $0.025 |
+>
+> Pricing source: [Azure OpenAI Service Pricing](https://azure.microsoft.com/en-us/pricing/details/azure-openai/)
+> 
+> *Prices may vary by region and deployment type. Check the pricing page for current rates.*
+
 ### FilteredFunctionCalling
 
 An end-to-end example of the real-world pattern: route tools with MCPToolRouter, send only the filtered tools to Azure OpenAI, and handle tool call responses.

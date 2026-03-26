@@ -41,6 +41,11 @@ AnsiConsole.WriteLine();
 var azureClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
 var chatClient = azureClient.GetChatClient(deploymentName);
 
+// Azure OpenAI Pricing — GPT-5-mini (March 2026)
+// Source: https://azure.microsoft.com/en-us/pricing/details/azure-openai/
+const decimal InputPricePerToken = 0.25m / 1_000_000m;   // $0.25 per 1M input tokens
+const decimal OutputPricePerToken = 2.00m / 1_000_000m;   // $2.00 per 1M output tokens
+
 // ── 120+ MCP Tool Definitions across 12 domains ─────────────────────
 var mcpTools = BuildToolDefinitions();
 AnsiConsole.MarkupLine($"[bold]📦 Created [cyan]{mcpTools.Length}[/] tool definitions across 12 domains[/]\n");
@@ -99,7 +104,8 @@ var liveTable = new Table()
     .AddColumn(new TableColumn("[bold]Standard[/]").RightAligned())
     .AddColumn(new TableColumn("[bold]Routed[/]").RightAligned())
     .AddColumn(new TableColumn("[bold]Saved[/]").RightAligned())
-    .AddColumn(new TableColumn("[bold]Savings %[/]").RightAligned());
+    .AddColumn(new TableColumn("[bold]Savings %[/]").RightAligned())
+    .AddColumn(new TableColumn("[bold]💰 Saved[/]").RightAligned());
 
 await AnsiConsole.Live(liveTable)
     .AutoClear(false)
@@ -119,6 +125,7 @@ await AnsiConsole.Live(liveTable)
                 "[dim]running...[/]",
                 "[dim]...[/]",
                 "[dim]...[/]",
+                "[dim]...[/]",
                 "[dim]...[/]");
             ctx.Refresh();
 
@@ -130,6 +137,7 @@ await AnsiConsole.Live(liveTable)
             var standardResponse = await chatClient.CompleteChatAsync(
                 [new UserChatMessage(prompt)], standardOptions);
             var stdInput = standardResponse.Value.Usage.InputTokenCount;
+            var stdOutput = standardResponse.Value.Usage.OutputTokenCount;
 
             // ── Routed mode: top-5 relevant tools ────────────────
             var relevant = await index.SearchAsync(prompt, topK: 5);
@@ -146,11 +154,17 @@ await AnsiConsole.Live(liveTable)
             var routedResponse = await chatClient.CompleteChatAsync(
                 [new UserChatMessage(prompt)], routedOptions);
             var rtdInput = routedResponse.Value.Usage.InputTokenCount;
+            var rtdOutput = routedResponse.Value.Usage.OutputTokenCount;
 
             var saved = stdInput - rtdInput;
             var pct = stdInput > 0 ? (double)saved / stdInput * 100 : 0;
 
+            var standardCost = (stdInput * InputPricePerToken) + (stdOutput * OutputPricePerToken);
+            var routedCost = (rtdInput * InputPricePerToken) + (rtdOutput * OutputPricePerToken);
+            var moneySaved = standardCost - routedCost;
+
             results.Add(new ScenarioResult(prompt, domain, stdInput, rtdInput, saved, pct,
+                standardCost, routedCost, moneySaved,
                 relevant.Select(r => (r.Tool.Name, r.Score)).ToList()));
 
             // Update the last row with actual numbers
@@ -161,6 +175,7 @@ await AnsiConsole.Live(liveTable)
             liveTable.Rows.Update(liveTable.Rows.Count - 1, 4, new Markup($"[green]{rtdInput:N0}[/]"));
             liveTable.Rows.Update(liveTable.Rows.Count - 1, 5, new Markup($"[cyan]{saved:N0}[/]"));
             liveTable.Rows.Update(liveTable.Rows.Count - 1, 6, new Markup($"[bold magenta]{pct:F1}%[/]"));
+            liveTable.Rows.Update(liveTable.Rows.Count - 1, 7, new Markup($"[green]${moneySaved:F4}[/]"));
             ctx.Refresh();
         }
     });
@@ -181,7 +196,8 @@ var summaryTable = new Table()
     .AddColumn(new TableColumn("[bold]Standard Tokens[/]").RightAligned())
     .AddColumn(new TableColumn("[bold]Routed Tokens[/]").RightAligned())
     .AddColumn(new TableColumn("[bold]Tokens Saved[/]").RightAligned())
-    .AddColumn(new TableColumn("[bold]Savings[/]").RightAligned());
+    .AddColumn(new TableColumn("[bold]Savings[/]").RightAligned())
+    .AddColumn(new TableColumn("[bold]💰 Cost Saved[/]").RightAligned());
 
 for (int i = 0; i < results.Count; i++)
 {
@@ -193,7 +209,8 @@ for (int i = 0; i < results.Count; i++)
         $"[red]{r.StandardTokens:N0}[/]",
         $"[green]{r.RoutedTokens:N0}[/]",
         $"[cyan]{r.Saved:N0}[/]",
-        $"[bold magenta]{r.Pct:F1}%[/]");
+        $"[bold magenta]{r.Pct:F1}%[/]",
+        $"[green]${r.MoneySaved:F4}[/]");
 }
 
 // Totals row
@@ -201,6 +218,7 @@ var totalStd = results.Sum(r => r.StandardTokens);
 var totalRtd = results.Sum(r => r.RoutedTokens);
 var totalSaved = totalStd - totalRtd;
 var totalPct = totalStd > 0 ? (double)totalSaved / totalStd * 100 : 0;
+var totalMoneySaved = results.Sum(r => r.MoneySaved);
 
 summaryTable.AddEmptyRow();
 summaryTable.AddRow(
@@ -210,7 +228,8 @@ summaryTable.AddRow(
     $"[bold red]{totalStd:N0}[/]",
     $"[bold green]{totalRtd:N0}[/]",
     $"[bold cyan]{totalSaved:N0}[/]",
-    $"[bold yellow on black] {totalPct:F1}% [/]");
+    $"[bold yellow on black] {totalPct:F1}% [/]",
+    $"[bold green]${totalMoneySaved:F4}[/]");
 
 AnsiConsole.Write(summaryTable);
 AnsiConsole.WriteLine();
@@ -219,7 +238,9 @@ AnsiConsole.WriteLine();
 AnsiConsole.Write(new Panel(
     $"[bold]By routing {mcpTools.Length} tools through MCPToolRouter, " +
     $"you save [cyan]{totalSaved:N0}[/] input tokens across {results.Count} calls.\n" +
-    $"That's an average of [magenta]{totalPct:F1}%[/] savings per request![/]")
+    $"That's an average of [magenta]{totalPct:F1}%[/] savings per request!\n" +
+    $"Estimated cost savings: [green]${totalMoneySaved:F4}[/] per {results.Count} calls " +
+    $"(based on GPT-5-mini pricing as of March 2026)[/]")
     .Header("[bold yellow]💰 Bottom Line[/]")
     .Border(BoxBorder.Double)
     .BorderColor(Color.Yellow)
@@ -241,6 +262,9 @@ foreach (var r in results)
 }
 
 AnsiConsole.Write(new Rule("[bold green]✅ Comparison Complete[/]").RuleStyle("green"));
+AnsiConsole.WriteLine();
+AnsiConsole.MarkupLine("[dim]💡 Pricing based on Azure OpenAI GPT-5-mini: $0.25/1M input, $2.00/1M output tokens[/]");
+AnsiConsole.MarkupLine("[dim]   Source: https://azure.microsoft.com/en-us/pricing/details/azure-openai/[/]");
 
 await index.DisposeAsync();
 return;
@@ -408,6 +432,9 @@ record ScenarioResult(
     int RoutedTokens,
     int Saved,
     double Pct,
+    decimal StandardCost,
+    decimal RoutedCost,
+    decimal MoneySaved,
     List<(string Name, float Score)> SelectedTools);
 
 // Required for user-secrets binding

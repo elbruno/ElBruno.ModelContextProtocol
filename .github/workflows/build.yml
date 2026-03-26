@@ -14,10 +14,19 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: |
+            8.0.x
+            10.0.x
       - name: Restore
-        run: dotnet restore ElBruno.ModelContextProtocol.slnx -p:TargetFrameworks=net8.0
+        run: dotnet restore ElBruno.ModelContextProtocol.slnx
       - name: Build
-        run: dotnet build ElBruno.ModelContextProtocol.slnx --no-restore -p:TargetFrameworks=net8.0
+        run: dotnet build ElBruno.ModelContextProtocol.slnx --no-restore -c Release
       - name: Test
-        run: dotnet test ElBruno.ModelContextProtocol.slnx --no-build --framework net8.0
+        run: dotnet test ElBruno.ModelContextProtocol.slnx --no-build -c Release --framework net8.0
+      - name: Pack (verify)
+        run: dotnet pack src/ElBruno.ModelContextProtocol.MCPToolRouter/ElBruno.ModelContextProtocol.MCPToolRouter.csproj -c Release --no-build --output ./nupkgs
+      - name: Upload NuGet artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nupkg
+          path: ./nupkgs/*

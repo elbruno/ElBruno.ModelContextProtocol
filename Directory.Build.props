@@ -23,5 +23,9 @@
     <Copyright>Copyright © Bruno Capuano $([System.DateTime]::Now.Year)</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageIcon>nuget_logo.png</PackageIcon>
+    <PackageIconUrl>https://raw.githubusercontent.com/elbruno/ElBruno.ModelContextProtocol/main/images/nuget_logo.png</PackageIconUrl>
+
+    <!-- Non-library projects are not packable by default -->
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 </Project>

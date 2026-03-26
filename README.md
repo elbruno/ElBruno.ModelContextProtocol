@@ -45,6 +45,80 @@ foreach (var result in results)
     Console.WriteLine($"{result.Tool.Name}: {result.Score:F3}");
 ```
 
+## How It Works
+
+MCPToolRouter uses semantic search to intelligently route prompts to the most relevant tools. Here's the process:
+
+1. **Ingestion:** The library ingests MCP tool definitions (name, description, and input schema)
+2. **Embedding:** Tool descriptions are embedded into a local vector store using ONNX embeddings (no external API calls needed)
+3. **Query embedding:** When you search, the user prompt is embedded using the same model
+4. **Similarity search:** The library finds the top-K tools via cosine similarity
+5. **Tool selection:** Only the relevant tools are returned — saving tokens when forwarding to LLMs
+
+This approach enables intelligent tool selection at LLM prompt time without external API calls or round-trips.
+
+## Samples
+
+Three sample applications showcase different use cases for MCPToolRouter:
+
+| Sample | Description | Azure Required |
+|--------|-------------|:-:|
+| [BasicUsage](src/samples/BasicUsage/) | Getting started — index tools and search | ❌ |
+| [TokenComparison](src/samples/TokenComparison/) | Compare token usage: all tools vs. routed | ✅ |
+| [FilteredFunctionCalling](src/samples/FilteredFunctionCalling/) | End-to-end function calling with filtered tools | ✅ |
+
+### BasicUsage
+
+The simplest way to get started. This sample creates a `ToolIndex` from MCP tool definitions, runs semantic search queries, and displays ranked results.
+
+**No Azure dependency required** — perfect for exploring the library.
+
+### TokenComparison
+
+This is the marquee sample demonstrating the dramatic token savings when using routed tools instead of sending all tools to the LLM.
+
+The sample compares two scenarios:
+- **Standard Mode:** All 18 tools sent to the LLM (full context, high token cost)
+- **Routed Mode:** Only top-3 relevant tools sent via MCPToolRouter (filtered context, minimal tokens)
+
+**Example output:**
+```
+📊 Standard Mode (18 tools):  ~1,800 input tokens
+📊 Routed Mode (3 tools):     ~500 input tokens
+💰 Savings:                    ~72% fewer tokens!
+```
+
+**Azure OpenAI Setup:**
+
+This sample requires Azure OpenAI. Use user secrets to configure credentials:
+
+```bash
+cd src/samples/TokenComparison
+dotnet user-secrets init
+dotnet user-secrets set "AzureOpenAI:Endpoint" "https://your-resource.openai.azure.com/"
+dotnet user-secrets set "AzureOpenAI:ApiKey" "your-api-key"
+dotnet user-secrets set "AzureOpenAI:DeploymentName" "gpt-5-mini"
+```
+
+Replace:
+- `your-resource` with your Azure OpenAI resource name
+- `your-api-key` with your API key
+- Deployment name with your model (e.g., `gpt-5-mini`)
+
+### FilteredFunctionCalling
+
+An end-to-end example of the real-world pattern: route tools with MCPToolRouter, send only the filtered tools to Azure OpenAI, and handle tool call responses.
+
+**Azure OpenAI Setup:**
+
+```bash
+cd src/samples/FilteredFunctionCalling
+dotnet user-secrets init
+dotnet user-secrets set "AzureOpenAI:Endpoint" "https://your-resource.openai.azure.com/"
+dotnet user-secrets set "AzureOpenAI:ApiKey" "your-api-key"
+dotnet user-secrets set "AzureOpenAI:DeploymentName" "gpt-5-mini"
+```
+
 ## Building from Source
 
 Clone the repository and build with the .NET CLI:

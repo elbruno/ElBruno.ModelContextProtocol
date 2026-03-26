@@ -5,4 +5,9 @@
   <Folder Name="/src/tests/">
     <Project Path="src\tests\ElBruno.ModelContextProtocol.MCPToolRouter.Tests\ElBruno.ModelContextProtocol.MCPToolRouter.Tests.csproj" />
   </Folder>
+  <Folder Name="/src/samples/">
+    <Project Path="src\samples\BasicUsage\BasicUsage.csproj" />
+    <Project Path="src\samples\TokenComparison\TokenComparison.csproj" />
+    <Project Path="src\samples\FilteredFunctionCalling\FilteredFunctionCalling.csproj" />
+  </Folder>
 </Solution>

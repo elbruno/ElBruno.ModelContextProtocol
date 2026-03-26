@@ -11,5 +11,6 @@
     <Project Path="src\samples\FilteredFunctionCalling\FilteredFunctionCalling.csproj" />
     <Project Path="src\samples\TokenComparisonMax\TokenComparisonMax.csproj" />
     <Project Path="src\samples\AgentWithToolRouter\AgentWithToolRouter.csproj" />
+    <Project Path="src\samples\FunctionalToolsValidation\FunctionalToolsValidation.csproj" />
   </Folder>
 </Solution>

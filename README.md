@@ -31,7 +31,7 @@ dotnet add package ElBruno.ModelContextProtocol.MCPToolRouter
 using ElBruno.ModelContextProtocol.MCPToolRouter;
 using ModelContextProtocol.Protocol;
 
-// 1. Define your MCP tools
+// Define your MCP tools (or get them from an MCP server)
 var tools = new[]
 {
     new Tool { Name = "get_weather", Description = "Get weather for a location" },
@@ -41,44 +41,36 @@ var tools = new[]
     new Tool { Name = "translate_text", Description = "Translate text between languages" }
 };
 
-// 2. Create the index (with optional configuration)
-var options = new ToolIndexOptions { QueryCacheSize = 10 };
-await using var index = await ToolIndex.CreateAsync(tools, options);
+// Create the index (one-time cost, reuse for every prompt)
+await using var index = await ToolIndex.CreateAsync(tools, new ToolIndexOptions { QueryCacheSize = 10 });
+
+// Find the top-3 most relevant tools for a prompt
 var results = await index.SearchAsync("What's the temperature outside?", topK: 3);
 
-foreach (var result in results)
-    Console.WriteLine($"{result.Tool.Name}: {result.Score:F3}");
+foreach (var r in results)
+    Console.WriteLine($"{r.Tool.Name}: {r.Score:F3}");
 ```
 
 ### Using Filtered Tools with Azure OpenAI
 
 ```csharp
-using Azure;
-using Azure.AI.OpenAI;
-using OpenAI.Chat;
+// using Azure; Azure.AI.OpenAI; OpenAI.Chat;
 
-// Create Azure OpenAI client
-var client = new AzureOpenAIClient(
+// Create Azure OpenAI ChatClient
+var chatClient = new AzureOpenAIClient(
     new Uri("https://your-resource.openai.azure.com/"),
-    new AzureKeyCredential("your-api-key"));
-var chatClient = client.GetChatClient("gpt-5-mini");
+    new AzureKeyCredential("your-api-key"))
+    .GetChatClient("gpt-5-mini");
 
 // Route to relevant tools only (instead of sending ALL tools)
-var relevantTools = await index.SearchAsync(userPrompt, topK: 3);
+var relevant = await index.SearchAsync(userPrompt, topK: 3);
 
-// Convert filtered tools to ChatTools
-var options = new ChatCompletionOptions();
-foreach (var result in relevantTools)
-{
-    options.Tools.Add(ChatTool.CreateFunctionTool(
-        result.Tool.Name,
-        result.Tool.Description ?? string.Empty));
-}
+// Add only filtered tools to the chat call — saving tokens!
+var chatOptions = new ChatCompletionOptions();
+foreach (var r in relevant)
+    chatOptions.Tools.Add(ChatTool.CreateFunctionTool(r.Tool.Name, r.Tool.Description ?? ""));
 
-// Call the LLM with only the relevant tools — saving tokens!
-var response = await chatClient.CompleteChatAsync(
-    [new UserChatMessage(userPrompt)],
-    options);
+var response = await chatClient.CompleteChatAsync([new UserChatMessage(userPrompt)], chatOptions);
 ```
 
 ## How It Works

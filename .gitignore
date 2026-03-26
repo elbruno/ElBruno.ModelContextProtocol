@@ -7,13 +7,28 @@
 [Oo]bj/
 [Dd]ebug/
 [Rr]elease/
+[Aa]rtifacts/
+
+# Test results
+[Tt]est[Rr]esult*/
+[Tt]est[Rr]esults/
+
+# NuGet packages
+*.nupkg
+*.snupkg
+.nuget/
+packages/
 
 # User secrets
 secrets.json
 
 # IDE
 .vs/
+*.cache
+*.DotSettings.user
+*.rsuser
 *.user
+*.userprefs
 *.suo
 
 # OS

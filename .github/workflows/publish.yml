@@ -1,0 +1,62 @@
+name: Publish to NuGet
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Package version (leave empty to use csproj version)"
+        required: false
+        type: string
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Determine version
+        id: version
+        run: |
+          # Extract from release tag if available
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${{ github.ref }}"
+            VERSION="${VERSION#refs/tags/v}"
+          elif [[ -n "${{ github.event.inputs.version }}" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            # Extract from csproj
+            VERSION=$(grep -m1 '<Version>' src/ElBruno.ModelContextProtocol.MCPToolRouter/ElBruno.ModelContextProtocol.MCPToolRouter.csproj | grep -oP '(?<=>)[^<]*' || echo "0.1.0")
+          fi
+          
+          # Validate version format
+          if [[ ! $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid version: $VERSION"
+            exit 1
+          fi
+          
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      - name: Restore
+        run: dotnet restore ElBruno.ModelContextProtocol.slnx -p:TargetFrameworks=net8.0
+      - name: Build
+        run: dotnet build ElBruno.ModelContextProtocol.slnx -c Release --no-restore -p:TargetFrameworks=net8.0 -p:Version=${{ steps.version.outputs.version }}
+      - name: Test
+        run: dotnet test ElBruno.ModelContextProtocol.slnx -c Release --no-build --framework net8.0
+      - name: Pack
+        run: |
+          dotnet pack src/ElBruno.ModelContextProtocol.MCPToolRouter/ElBruno.ModelContextProtocol.MCPToolRouter.csproj -c Release --no-build -p:TargetFrameworks=net8.0 -p:Version=${{ steps.version.outputs.version }} --output ./nupkgs
+      - name: NuGet login (OIDC trusted publishing)
+        uses: NuGet/login@v1
+        id: nuget-login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+      - name: Push to NuGet
+        run: dotnet nuget push "./nupkgs/*.nupkg" --api-key ${{ steps.nuget-login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate

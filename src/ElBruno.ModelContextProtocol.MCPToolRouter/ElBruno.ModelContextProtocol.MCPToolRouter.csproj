@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    
+    <!-- NuGet Package Metadata -->
+    <PackageId>ElBruno.ModelContextProtocol.MCPToolRouter</PackageId>
+    <Description>Semantic routing for Model Context Protocol (MCP) tool definitions using local embeddings. Indexes MCP tools and returns the most relevant tools for a given prompt via vector search.</Description>
+    <PackageTags>mcp;model-context-protocol;embeddings;vector-search;semantic-search;ai;tools</PackageTags>
+    <PackageProjectUrl>https://github.com/elbruno/ElBruno.ModelContextProtocol</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    
+    <!-- Symbol Packages -->
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    
+    <!-- CI Build -->
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ElBruno.ModelContextProtocol.MCPToolRouter.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)..\..\images\nuget_logo.png" Pack="true" PackagePath="" />
+    <None Include="$(MSBuildThisFileDirectory)..\..\README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ElBruno.LocalEmbeddings" Version="1.1.5" />
+    <PackageReference Include="ModelContextProtocol.Core" Version="1.0.0" />
+  </ItemGroup>
+
+</Project>

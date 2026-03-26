@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src\ElBruno.ModelContextProtocol.MCPToolRouter\ElBruno.ModelContextProtocol.MCPToolRouter.csproj" />
+  </Folder>
+  <Folder Name="/src/tests/">
+    <Project Path="src\tests\ElBruno.ModelContextProtocol.MCPToolRouter.Tests\ElBruno.ModelContextProtocol.MCPToolRouter.Tests.csproj" />
+  </Folder>
+</Solution>

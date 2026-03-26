@@ -41,8 +41,9 @@ var tools = new[]
     new Tool { Name = "translate_text", Description = "Translate text between languages" }
 };
 
-// 2. Create the index and find relevant tools
-await using var index = await ToolIndex.CreateAsync(tools);
+// 2. Create the index (with optional configuration)
+var options = new ToolIndexOptions { QueryCacheSize = 10 };
+await using var index = await ToolIndex.CreateAsync(tools, options);
 var results = await index.SearchAsync("What's the temperature outside?", topK: 3);
 
 foreach (var result in results)
@@ -92,9 +93,72 @@ MCPToolRouter uses semantic search to intelligently route prompts to the most re
 
 This approach enables intelligent tool selection at LLM prompt time without external API calls or round-trips.
 
+## Advanced Features
+
+### ToolIndexOptions
+
+Configure the index behavior with `ToolIndexOptions`:
+
+```csharp
+var options = new ToolIndexOptions
+{
+    QueryCacheSize = 20,                          // LRU cache for repeated queries (0 = disabled)
+    EmbeddingTextTemplate = "{Name}: {Description}" // Customize how tools are embedded
+};
+
+await using var index = await ToolIndex.CreateAsync(tools, options);
+```
+
+### Save / Load Index
+
+Persist a pre-built index to avoid re-embedding on startup:
+
+```csharp
+// Save
+using var file = File.Create("tools.bin");
+await index.SaveAsync(file);
+
+// Load (instant warm-start — no re-embedding)
+using var stream = File.OpenRead("tools.bin");
+await using var loaded = await ToolIndex.LoadAsync(stream);
+```
+
+### Dynamic Index (Add / Remove Tools)
+
+Modify the index at runtime without rebuilding:
+
+```csharp
+await index.AddToolsAsync(new[] { new Tool { Name = "new_tool", Description = "..." } });
+index.RemoveTools(new[] { "obsolete_tool" });
+```
+
+### Dependency Injection
+
+Register `IToolIndex` as a singleton in ASP.NET Core or any DI container:
+
+```csharp
+builder.Services.AddMcpToolRouter(tools, opts =>
+{
+    opts.QueryCacheSize = 20;
+});
+
+// Inject IToolIndex anywhere
+app.MapGet("/search", async (IToolIndex index, string query)
+    => await index.SearchAsync(query, topK: 3));
+```
+
+### Custom Embedding Generator
+
+Bring your own `IEmbeddingGenerator<string, Embedding<float>>` from the Microsoft.Extensions.AI ecosystem:
+
+```csharp
+IEmbeddingGenerator<string, Embedding<float>> myGenerator = /* your provider */;
+await using var index = await ToolIndex.CreateAsync(tools, myGenerator, options);
+```
+
 ## Samples
 
-Five sample applications showcase different use cases for MCPToolRouter:
+Six sample applications showcase different use cases for MCPToolRouter:
 
 | Sample | Description | Azure Required |
 |--------|-------------|:-:|
@@ -103,6 +167,7 @@ Five sample applications showcase different use cases for MCPToolRouter:
 | [TokenComparisonMax](src/samples/TokenComparisonMax/) | Extreme 120+ tools scenario with rich Spectre.Console UX | ✅ |
 | [FilteredFunctionCalling](src/samples/FilteredFunctionCalling/) | End-to-end function calling with filtered tools | ✅ |
 | [AgentWithToolRouter](src/samples/AgentWithToolRouter/) | Microsoft Agent Framework with semantic tool routing | ✅ |
+| [FunctionalToolsValidation](src/samples/FunctionalToolsValidation/) | 52 real tools with execution validation — standard vs. routed | ✅ |
 
 ### BasicUsage
 
@@ -207,6 +272,26 @@ Demonstrates MCPToolRouter integrated with the [Microsoft Agent Framework](https
 
 ```bash
 cd src/samples/AgentWithToolRouter
+dotnet user-secrets init
+dotnet user-secrets set "AzureOpenAI:Endpoint" "https://your-resource.openai.azure.com/"
+dotnet user-secrets set "AzureOpenAI:ApiKey" "your-api-key"
+dotnet user-secrets set "AzureOpenAI:DeploymentName" "gpt-5-mini"
+```
+
+### FunctionalToolsValidation
+
+A comprehensive validation sample with **52 real tool implementations** across 8 domains (math, strings, collections, dates, conversion, encoding, statistics, hashing). Each tool performs actual computation — no stubs. The sample runs 12 test scenarios comparing standard mode (all 52 tools) vs. routed mode (top-K filtered), validating that both produce correct results while measuring token savings.
+
+**Features:**
+- 52 fully functional tools with real C# implementations
+- 12 test scenarios with expected-result validation
+- Side-by-side comparison: standard vs. routed tool selection
+- Full tool-call execution loop with Azure OpenAI
+
+**Azure OpenAI Setup:**
+
+```bash
+cd src/samples/FunctionalToolsValidation
 dotnet user-secrets init
 dotnet user-secrets set "AzureOpenAI:Endpoint" "https://your-resource.openai.azure.com/"
 dotnet user-secrets set "AzureOpenAI:ApiKey" "your-api-key"

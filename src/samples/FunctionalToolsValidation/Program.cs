@@ -511,7 +511,8 @@ Console.WriteLine($"📋 Loaded {scenarios.Length} test scenarios\n");
 // ══════════════════════════════════════════════════════════════
 
 Console.WriteLine("🔍 Building ToolIndex...");
-await using var toolIndex = await ToolIndex.CreateAsync(mcpTools.ToArray());
+var indexOptions = new ToolIndexOptions { QueryCacheSize = 15 };
+await using var toolIndex = await ToolIndex.CreateAsync(mcpTools.ToArray(), indexOptions);
 Console.WriteLine($"🔍 ToolIndex ready — {mcpTools.Count} tools indexed\n");
 
 // ══════════════════════════════════════════════════════════════

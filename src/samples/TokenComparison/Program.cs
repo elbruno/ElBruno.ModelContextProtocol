@@ -64,6 +64,12 @@ var mcpTools = new[]
 
 Console.WriteLine($"📦 Created {mcpTools.Length} tool definitions\n");
 
+// Build the index once and reuse across all prompts (with query caching)
+Console.WriteLine("⏳ Building tool index...");
+var indexOptions = new ToolIndexOptions { QueryCacheSize = 10 };
+await using var toolIndex = await ToolIndex.CreateAsync(mcpTools, indexOptions);
+Console.WriteLine($"✅ Index ready — {toolIndex.Count} tools indexed\n");
+
 // Test with multiple prompts
 var testPrompts = new[]
 {
@@ -74,7 +80,7 @@ var testPrompts = new[]
 
 foreach (var userPrompt in testPrompts)
 {
-    await RunComparisonAsync(userPrompt, mcpTools, chatClient);
+    await RunComparisonAsync(userPrompt, mcpTools, toolIndex, chatClient);
     Console.WriteLine();
 }
 
@@ -89,7 +95,7 @@ static ChatTool ConvertToChatTool(Tool mcpTool)
         mcpTool.Description ?? string.Empty);
 }
 
-static async Task RunComparisonAsync(string userPrompt, Tool[] mcpTools, ChatClient chatClient)
+static async Task RunComparisonAsync(string userPrompt, Tool[] mcpTools, ToolIndex toolIndex, ChatClient chatClient)
 {
     Console.WriteLine("════════════════════════════════════════════════════════");
     Console.WriteLine($"User Prompt: \"{userPrompt}\"");
@@ -119,8 +125,7 @@ static async Task RunComparisonAsync(string userPrompt, Tool[] mcpTools, ChatCli
 
     // ROUTED MODE: Use MCPToolRouter to filter
     Console.WriteLine("🟢 ROUTED MODE: Using MCPToolRouter to find relevant tools...");
-    await using var index = await ToolIndex.CreateAsync(mcpTools);
-    var relevantTools = await index.SearchAsync(userPrompt, topK: 3);
+    var relevantTools = await toolIndex.SearchAsync(userPrompt, topK: 3);
 
     Console.WriteLine("   Selected tools:");
     foreach (var result in relevantTools)

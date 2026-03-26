@@ -285,4 +285,158 @@ public class ToolIndexTests : IClassFixture<SharedToolIndexFixture>
     }
 
     #endregion
+
+    #region Save/Load Round-Trip Tests
+
+    [Fact]
+    public async Task SaveAsync_LoadAsync_RoundTrip_PreservesToolsAndCount()
+    {
+        // Arrange
+        var stream = new MemoryStream();
+        await _fixture.Index.SaveAsync(stream);
+        stream.Position = 0;
+
+        // Act
+        await using var loaded = await ToolIndex.LoadAsync(stream);
+
+        // Assert
+        Assert.Equal(_fixture.Index.Count, loaded.Count);
+    }
+
+    [Fact]
+    public async Task SaveAsync_LoadAsync_RoundTrip_SearchReturnsSameResults()
+    {
+        // Arrange
+        var stream = new MemoryStream();
+        await _fixture.Index.SaveAsync(stream);
+        stream.Position = 0;
+        await using var loaded = await ToolIndex.LoadAsync(stream);
+
+        // Act
+        var originalResults = await _fixture.Index.SearchAsync("weather forecast", topK: 3);
+        var loadedResults = await loaded.SearchAsync("weather forecast", topK: 3);
+
+        // Assert
+        Assert.Equal(originalResults.Count, loadedResults.Count);
+        Assert.Equal(originalResults[0].Tool.Name, loadedResults[0].Tool.Name);
+    }
+
+    #endregion
+
+    #region AddTools / RemoveTools Tests
+
+    [Fact]
+    public async Task AddToolsAsync_IncreasesCount()
+    {
+        // Arrange — create a separate index to avoid mutating the shared fixture
+        var tools = new[] { new Tool { Name = "base_tool", Description = "Base tool for testing" } };
+        await using var index = await ToolIndex.CreateAsync(tools);
+        var initialCount = index.Count;
+
+        // Act
+        await index.AddToolsAsync(new[] { new Tool { Name = "added_tool", Description = "Dynamically added tool" } });
+
+        // Assert
+        Assert.Equal(initialCount + 1, index.Count);
+    }
+
+    [Fact]
+    public async Task RemoveTools_DecreasesCount()
+    {
+        // Arrange
+        var tools = new[]
+        {
+            new Tool { Name = "keep_tool", Description = "This tool stays" },
+            new Tool { Name = "remove_tool", Description = "This tool goes away" }
+        };
+        await using var index = await ToolIndex.CreateAsync(tools);
+        Assert.Equal(2, index.Count);
+
+        // Act
+        index.RemoveTools(new[] { "remove_tool" });
+
+        // Assert
+        Assert.Equal(1, index.Count);
+    }
+
+    [Fact]
+    public async Task AddToolsAsync_AddedToolIsSearchable()
+    {
+        // Arrange
+        var tools = new[] { new Tool { Name = "original_tool", Description = "Original tool" } };
+        await using var index = await ToolIndex.CreateAsync(tools);
+        await index.AddToolsAsync(new[] { new Tool { Name = "cooking_recipe", Description = "Finds and suggests cooking recipes and meal ideas" } });
+
+        // Act
+        var results = await index.SearchAsync("I want to cook dinner", topK: 2);
+
+        // Assert
+        Assert.Contains(results, r => r.Tool.Name == "cooking_recipe");
+    }
+
+    [Fact]
+    public async Task RemoveTools_RemovedToolNotReturnedInSearch()
+    {
+        // Arrange
+        var tools = new[]
+        {
+            new Tool { Name = "get_weather", Description = "Get current weather information" },
+            new Tool { Name = "send_email", Description = "Send email messages" }
+        };
+        await using var index = await ToolIndex.CreateAsync(tools);
+
+        // Act
+        index.RemoveTools(new[] { "get_weather" });
+        var results = await index.SearchAsync("weather temperature", topK: 5);
+
+        // Assert
+        Assert.DoesNotContain(results, r => r.Tool.Name == "get_weather");
+    }
+
+    #endregion
+
+    #region ToolIndexOptions Tests
+
+    [Fact]
+    public async Task CreateAsync_WithOptions_Succeeds()
+    {
+        // Arrange
+        var tools = new[] { new Tool { Name = "test_tool", Description = "A test tool" } };
+        var options = new ToolIndexOptions
+        {
+            QueryCacheSize = 10,
+            EmbeddingTextTemplate = "Tool: {Name} — {Description}"
+        };
+
+        // Act
+        await using var index = await ToolIndex.CreateAsync(tools, options);
+
+        // Assert
+        Assert.NotNull(index);
+        Assert.Equal(1, index.Count);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithQueryCache_ReturnsConsistentResults()
+    {
+        // Arrange
+        var tools = new[]
+        {
+            new Tool { Name = "get_weather", Description = "Get weather information" },
+            new Tool { Name = "send_email", Description = "Send email messages" }
+        };
+        var options = new ToolIndexOptions { QueryCacheSize = 5 };
+        await using var index = await ToolIndex.CreateAsync(tools, options);
+
+        // Act — same query twice should use cache on second call
+        var results1 = await index.SearchAsync("weather", topK: 2);
+        var results2 = await index.SearchAsync("weather", topK: 2);
+
+        // Assert — results should be identical
+        Assert.Equal(results1.Count, results2.Count);
+        Assert.Equal(results1[0].Tool.Name, results2[0].Tool.Name);
+        Assert.Equal(results1[0].Score, results2[0].Score);
+    }
+
+    #endregion
 }

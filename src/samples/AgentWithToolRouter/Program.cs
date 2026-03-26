@@ -96,7 +96,8 @@ var mcpTools = new Tool[]
 // ─── 4. Build the semantic tool index (one-time cost, reuse for every prompt) ─
 
 Console.WriteLine("🔧 Building semantic tool index...");
-await using var toolIndex = await ToolIndex.CreateAsync(mcpTools);
+var indexOptions = new ToolIndexOptions { QueryCacheSize = 10 };
+await using var toolIndex = await ToolIndex.CreateAsync(mcpTools, indexOptions);
 Console.WriteLine($"   Indexed {toolIndex.Count} tools ✅\n");
 
 // ─── 5. Routed prompts — filter tools per prompt, then run agent ─────────────

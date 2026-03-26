@@ -53,8 +53,9 @@ var tools = new[]
 Console.WriteLine($"📦 Indexed {tools.Length} tools\n");
 Console.WriteLine("⏳ Creating tool index (downloading embedding model on first run)...\n");
 
-// Create the ToolIndex
-await using var index = await ToolIndex.CreateAsync(tools);
+// Create the ToolIndex with options
+var options = new ToolIndexOptions { QueryCacheSize = 10 };
+await using var index = await ToolIndex.CreateAsync(tools, options);
 
 Console.WriteLine("✅ Index created successfully!\n");
 

@@ -66,7 +66,8 @@ index = await AnsiConsole.Status()
     .SpinnerStyle(Style.Parse("cyan"))
     .StartAsync("Loading embedding model and indexing 120+ tools...", async ctx =>
     {
-        return await ToolIndex.CreateAsync(mcpTools);
+        var indexOptions = new ToolIndexOptions { QueryCacheSize = 20 };
+        return await ToolIndex.CreateAsync(mcpTools, indexOptions);
     });
 
 AnsiConsole.MarkupLine($"[green]✅ ToolIndex ready — {index.Count} tools indexed[/]\n");

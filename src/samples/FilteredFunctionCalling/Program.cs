@@ -71,6 +71,13 @@ var toolDefinitions = new Dictionary<string, (Tool McpTool, Func<Dictionary<stri
 
 Console.WriteLine($"📦 Registered {toolDefinitions.Count} tools with implementations\n");
 
+// Build index once and reuse for all prompts
+Console.WriteLine("⏳ Building tool index...");
+var allMcpTools = toolDefinitions.Values.Select(t => t.McpTool).ToArray();
+var indexOptions = new ToolIndexOptions { QueryCacheSize = 10 };
+await using var toolIndex = await ToolIndex.CreateAsync(allMcpTools, indexOptions);
+Console.WriteLine($"✅ Index ready — {toolIndex.Count} tools indexed\n");
+
 // Test prompts
 var prompts = new[]
 {
@@ -81,7 +88,7 @@ var prompts = new[]
 
 foreach (var userPrompt in prompts)
 {
-    await ProcessPromptAsync(userPrompt, toolDefinitions, chatClient);
+    await ProcessPromptAsync(userPrompt, toolDefinitions, toolIndex, chatClient);
     Console.WriteLine();
 }
 
@@ -92,6 +99,7 @@ Console.WriteLine("╚═══════════════════�
 static async Task ProcessPromptAsync(
     string userPrompt,
     Dictionary<string, (Tool McpTool, Func<Dictionary<string, object>, string> Implementation)> toolDefinitions,
+    ToolIndex toolIndex,
     ChatClient chatClient)
 {
     Console.WriteLine("════════════════════════════════════════════════════════");
@@ -100,9 +108,7 @@ static async Task ProcessPromptAsync(
 
     // Step 1: Use MCPToolRouter to filter tools
     Console.WriteLine("🔍 Step 1: Filtering tools with MCPToolRouter...");
-    var allMcpTools = toolDefinitions.Values.Select(t => t.McpTool).ToArray();
-    await using var index = await ToolIndex.CreateAsync(allMcpTools);
-    var relevantTools = await index.SearchAsync(userPrompt, topK: 3);
+    var relevantTools = await toolIndex.SearchAsync(userPrompt, topK: 3);
 
     Console.WriteLine($"   Found {relevantTools.Count()} relevant tools:");
     foreach (var result in relevantTools)

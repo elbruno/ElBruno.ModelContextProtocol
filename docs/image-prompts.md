@@ -64,9 +64,9 @@ Style reference: Modern icon design from Apple, GitHub, and Microsoft design sys
 
 ## 2. YouTube Video Thumbnail (1920x1080)
 
-**Purpose:** Eye-catching thumbnail for YouTube videos about MCPToolRouter  
-**Aspect Ratio:** 16:9 (widescreen)  
-**Recommended Resolution:** 1920x1080 pixels  
+**Purpose:** Eye-catching thumbnail for YouTube videos about MCPToolRouter
+**Aspect Ratio:** 16:9 (widescreen)
+**Recommended Resolution:** 1920x1080 pixels
 
 ### Visual Concept
 A bold, high-contrast thumbnail that stands out in YouTube feeds. Should immediately convey:
@@ -74,38 +74,98 @@ A bold, high-contrast thumbnail that stands out in YouTube feeds. Should immedia
 - **The product:** MCPToolRouter
 - **The context:** LLM tools, AI, .NET
 
-### DALL-E Prompt
+### DALL-E Prompt (Viral Version)
 
 ```
-Create a striking YouTube video thumbnail (1920x1080 px, 16:9 aspect ratio).
+Create an attention-grabbing, viral-style YouTube thumbnail (1920x1080 px, 16:9).
 
 Design composition:
-- Left side (40%): A stylized illustration of tools being sorted/filtered through a magical funnel or prism
-  - Show 10-15 tool icons (wrench, hammer, database, key, binoculars, folder, code, etc.)
-  - Some tools are highlighted in cyan/neon, others faded in the background
-  - Visual motion/flow suggesting filtering and selection
-  
-- Right side (60%): Bold typography and key messaging
-  - Text overlay (large, bold, sans-serif): "Save 80% Tokens" or "Smart Tool Routing"
-  - Subtitle in smaller text: "with MCPToolRouter"
-  - Add an arrow or chevron pointing right, suggesting progress/improvement
-  
-- Color scheme: Dark modern gradient background (dark blue to black: #001a4d → #000000)
-  - Bright neon cyan (#00D9FF) for highlighted tools and text
-  - Purple accents (#9D4EDD) for secondary elements
-  - White text for maximum contrast and readability
-  
-- Visual style: 3D isometric or modern flat design with subtle depth
-- No gradients on text (solid white/cyan only)
-- High contrast for readability on small screens
-- .NET branding: subtle C# or .NET logo in corner if needed
-- Professional, modern, energetic vibe
+- Left side (40%): Dramatic "BEFORE" scenario
+  - Cluttered pile of 20+ tool icons (wrench, database, email, calculator, files, etc.)
+  - Red "X" or warning symbol overlay
+  - Text: "2000 TOKENS" in alarming red
+  - Visual chaos suggesting waste and inefficiency
 
-Elements to include:
-- Animated-style motion lines suggesting speed and efficiency
-- Clear focal point (text area) with minimal visual competition
-- Room for video title overlay in bottom half
-- Balanced composition that works at thumbnail size (160x90 px)
+- Center (20%): A striking transformation element
+  - Large glowing arrow or lightning bolt pointing right
+  - Bright cyan/neon glow effect (#00D9FF)
+  - Small MCPToolRouter logo or icon
+  - Creates dramatic visual break between before/after
+
+- Right side (40%): Victorious "AFTER" scenario
+  - Clean selection of 3-4 highlighted tools in organized layout
+  - Green checkmark or success symbol
+  - Text: "300 TOKENS" in winning green
+  - Visual clarity suggesting efficiency and intelligence
+
+- Top overlay: Explosive headline text
+  - "STOP WASTING TOKENS!" or "SAVE 80% INSTANTLY!"
+  - Large, bold, outlined text (5-6px white outline on cyan fill)
+  - Slight rotation or dynamic angle for energy
+
+- Bottom corner: .NET + AI badges/icons
+  - Small C# logo, .NET logo, or AI brain icon
+  - Adds credibility and context
+
+- Color scheme:
+  - Background: Dramatic gradient (deep purple #9D4EDD → dark blue #0066CC)
+  - Accent glow: Electric cyan (#00D9FF) around transformation arrow
+  - Text: White with heavy outline for maximum readability
+  - "Before" area: Red/orange danger tones
+  - "After" area: Green/cyan success tones
+
+- Style: High-energy, YouTube viral aesthetic
+  - High contrast and saturation for mobile visibility
+  - Bold outlines on all elements
+  - Motion lines, glow effects, and impact visuals
+  - Slightly exaggerated proportions for attention-grabbing effect
+
+Key viral elements:
+✅ Clear before/after transformation (proven thumbnail format)
+✅ Numbers that shock (2000 → 300 tokens)
+✅ Emotional contrast (chaos → order)
+✅ Bold, scannable text readable at 160x90px
+✅ Central focal point (transformation arrow)
+✅ Color psychology (red danger → green success)
+```
+
+### Alternative Viral Prompt (Minimalist Shock)
+
+```
+Create a minimalist shock-value YouTube thumbnail (1920x1080 px, 16:9).
+
+Centered composition:
+- Giant percentage number dominating the frame: "80%"
+  - Font: Ultra-bold, modern sans-serif (600-900 weight)
+  - Color: Glowing cyan (#00D9FF) with white outline
+  - Takes up 60% of the canvas
+  - Subtle glow/neon effect around the number
+
+- Below the percentage: Clear value proposition
+  - Text: "FEWER TOKENS"
+  - Slightly smaller but still bold
+  - Color: White with cyan accent
+
+- Top banner (15% of height): Context
+  - Text: "Smart Tool Routing for LLMs"
+  - Background: Semi-transparent dark bar
+  - Small MCPToolRouter or .NET logo
+
+- Bottom banner (15% of height): Call to action
+  - Text: "Free & Open Source" or "Try It Now"
+  - Background: Semi-transparent dark bar
+
+- Background:
+  - Clean gradient (dark blue #001a4d → purple #9D4EDD)
+  - Subtle abstract tech pattern (circuit board, network nodes)
+  - Low opacity (10-15%) so it doesn't compete with text
+
+- Visual style: Clean, modern, data-driven
+  - Emphasis on the shocking statistic
+  - No clutter, pure impact
+  - Professional yet attention-grabbing
+
+This approach uses the "big number" viral format (similar to Mr. Beast style) — immediately scannable and compelling.
 ```
 
 ### Color Palette
@@ -136,9 +196,9 @@ Elements to include:
 
 ## 3. Blog Post Header (1200x630)
 
-**Purpose:** Social card and blog post header image  
-**Aspect Ratio:** 16:9 (widescreen)  
-**Recommended Resolution:** 1200x630 pixels  
+**Purpose:** Social card and blog post header image
+**Aspect Ratio:** 16:9 (widescreen)
+**Recommended Resolution:** 1200x630 pixels
 
 ### Visual Concept
 A professional, clean header that works well with text overlay and communicates the core value prop. Should feel:
@@ -146,45 +206,62 @@ A professional, clean header that works well with text overlay and communicates 
 - **Minimalist** — doesn't compete with blog title text
 - **On-brand** — consistent with product and .NET community aesthetics
 
-### DALL-E Prompt
+### DALL-E Prompt (Viral Version)
 
 ```
-Create a professional blog post header image (1200x630 px, 16:9 aspect ratio).
+Create a compelling, shareable blog post header (1200x630 px, 16:9 aspect ratio).
 
 Design composition:
-- Background: Subtle gradient (deep blue #0066CC fading to purple #9D4EDD) with minimal grain texture
-  - Keep background simple to allow text overlay (blog title, subtitle)
-  - Gradient should be smooth, not harsh
-  
-- Center focal element (takes up ~60% of width):
-  - Modern illustration of a vector/network diagram
-  - Show 8-10 circular nodes representing tools, connected by flowing lines
-  - Some nodes highlighted in bright cyan (#00D9FF), others in lighter blue
-  - Lines showing the "routing" or "filtering" of tools towards a central point
-  - Lines can have subtle glow or gradient effect
-  - 3D isometric view or clean flat design style
-  
-- Visual metaphors to include:
-  - Magnifying glass overlay on some tool nodes (suggesting search/semantic routing)
-  - Checkmark or highlight on selected tools
-  - Faded/reduced opacity on non-selected tools
-  
-- Right edge (20%): Negative space for text overlay
-  - Pure white or very light gray background
-  - This is where blog title and date will be placed
-  
-- Visual style: Modern, clean, minimalist
-  - No overly complex patterns or textures
-  - Subtle shadows/depth but not 3D rendering
-  - Consistent line weights and proportions
-  
-- Branding: Optional small ElBruno or MCPToolRouter text in bottom-right corner (faint, 20% opacity)
+- Split-screen design showing transformation:
 
-Elements to include:
-- Multiple tool representations (diverse icons: database, API, key, folder, etc.)
-- Clear visual hierarchy showing routing/filtering
-- Emphasis on intelligence/semantic understanding
-- Professional, trustworthy aesthetic suitable for tech blog
+  LEFT HALF (Before):
+  - Chaotic scatter of 15+ small tool icons (wrench, database, email, file, key, etc.)
+  - Slightly darker/desaturated colors (grays, muted blues)
+  - Visual noise and disorder
+  - Small text at bottom: "50 tools → 2000 tokens"
+  - Red/orange accent suggesting problem/waste
+
+  CENTER DIVIDER:
+  - Bright vertical line or gradient separator
+  - Arrow or lightning bolt pointing right
+  - Glowing cyan (#00D9FF) accent
+  - Suggests transformation and intelligence
+
+  RIGHT HALF (After):
+  - Clean arrangement of 3-4 highlighted tool icons
+  - Bright, vibrant colors (cyan #00D9FF, purple #9D4EDD)
+  - Visual clarity and focus
+  - Small text at bottom: "3 tools → 300 tokens"
+  - Green accent suggesting success/optimization
+
+- Top overlay text (large, bold):
+  - "Stop Wasting Tokens" or "Smart Tool Routing"
+  - Color: White with subtle drop shadow for readability
+  - Positioned in top third, centered
+
+- Bottom branding:
+  - "ElBruno.MCPToolRouter" in small text
+  - ".NET • Open Source" tag
+  - Subtle, not competing with main content
+
+- Color scheme:
+  - Background gradient: Deep blue #0066CC → purple #9D4EDD
+  - Left side: Muted, darker tones
+  - Right side: Bright, vibrant tones
+  - Divider: Glowing cyan (#00D9FF)
+
+- Visual style:
+  - Modern, clean, data-driven
+  - Before/after contrast (proven engagement pattern)
+  - Professional but attention-grabbing
+  - Works with text overlay for social sharing
+
+Key viral elements:
+✅ Clear before/after visual contrast
+✅ Numbers that demonstrate value (50→3 tools)
+✅ Problem/solution framework
+✅ Eye-catching but professional
+✅ Social share-worthy composition
 ```
 
 ### Color Palette
@@ -215,53 +292,171 @@ Elements to include:
 
 ## 4. Twitter / LinkedIn Social Card (1080x1080)
 
-**Purpose:** Shareable social media card for Twitter and LinkedIn  
-**Aspect Ratio:** 1:1 (square)  
-**Recommended Resolution:** 1080x1080 pixels  
+**Purpose:** Shareable social media card for Twitter and LinkedIn
+**Aspect Ratio:** 1:1 (square)
+**Recommended Resolution:** 1080x1080 pixels
 
 ### Visual Concept
 A bold, shareable design that works in social feeds. Should communicate value in 2-3 seconds and encourage shares/engagement.
 
-### DALL-E Prompt
+### DALL-E Prompt (Viral Version 1: Impact Numbers)
 
 ```
-Create a bold social media card (1080x1080 px, 1:1 square aspect ratio) for Twitter and LinkedIn.
+Create a bold, viral-ready social media card (1080x1080 px, 1:1 square).
 
-Design composition:
-- Bold, contrasting background using deep blue to purple gradient (#0066CC → #9D4EDD)
-  - Can include a subtle diagonal stripe or accent pattern (but not busy)
-  - Ensure background is cohesive and doesn't distract from text
-  
-- Centered visual element (45% of card):
-  - Stylized illustration showing tool routing/semantic search
-  - Simple, iconic representation: 3-4 circles (tools) in a row, with an arrow or flow pointing to 1-2 highlighted circles
-  - Tool symbols inside circles (wrench, gear, key, database, etc.)
-  - Highlighted circles in bright cyan (#00D9FF)
-  - Non-highlighted circles in light gray or secondary color
-  - Clean, modern line style with 3-4 pixel strokes
-  
-- Text overlay (35% of card):
-  - Bold headline: One of these options:
-    * "Smart Tool Routing"
-    * "Semantic Search for MCP Tools"
-    * "Save Tokens with MCPToolRouter"
-    * "Intelligent Tool Selection"
-  - Subtext (smaller): "Open-source .NET library"
-  - Font: Bold sans-serif (similar to Montserrat, Poppins, or Inter)
-  - Text color: White (#FFFFFF) for maximum contrast
-  - No drop shadows on text, but ensure legibility
-  
-- Bottom branding (10%):
-  - Small ElBruno logo or "ElBruno.MCPToolRouter" text
-  - Light gray or white text, 60-70% opacity
-  - GitHub repo URL (optional): github.com/elbruno/ElBruno.ModelContextProtocol
-  
-- Style: Energetic, modern, professional
-  - Flat design with minimal depth
-  - High color saturation for engagement
-  - Bold, clean typography
-  
-- Key design principle: Every element should be recognizable when the card scales down to 300x300px (mobile preview)
+Centered composition focused on shocking statistics:
+
+- Main visual (60% of card):
+  - Giant "80%" number in center
+    * Ultra-bold, modern font (700-900 weight)
+    * Glowing cyan color (#00D9FF) with white outline (4-5px)
+    * Subtle glow/neon effect
+  - Below number: "FEWER TOKENS"
+    * Large, bold text
+    * White color with cyan accent
+  - Surrounding the number: Circular arrangement of tool icons
+    * 8-10 small tool symbols (wrench, database, key, code, etc.)
+    * Some highlighted in cyan (selected), others faded gray (filtered out)
+    * Suggests filtering and selection visually
+
+- Top section (20%):
+  - Headline: "Smart Tool Routing"
+  - Subtext: "for LLMs & AI Agents"
+  - Font: Bold sans-serif (Montserrat, Poppins, Inter)
+  - Color: White
+
+- Bottom section (20%):
+  - "ElBruno.MCPToolRouter"
+  - ".NET • Open Source • Free"
+  - Small GitHub icon + "github.com/elbruno"
+  - Color: White/light gray (80% opacity)
+
+- Background:
+  - Vibrant gradient (deep blue #0066CC → electric purple #9D4EDD)
+  - Diagonal accent stripe or subtle geometric pattern (low opacity)
+  - High saturation for social feed visibility
+
+- Visual style:
+  - High-energy, modern, data-driven
+  - Strong contrast for mobile screens
+  - Viral "big number" format
+  - Professional but eye-catching
+
+Key viral elements:
+✅ Shocking percentage (80%) as focal point
+✅ Clear value proposition (fewer tokens = save money)
+✅ Visual metaphor (filtering tools)
+✅ Readable at 300x300px thumbnail
+✅ Encourages "stop scrolling" moment
+```
+
+### DALL-E Prompt (Viral Version 2: Before/After Squares)
+
+```
+Create an engaging social card with before/after comparison (1080x1080 px, 1:1 square).
+
+Design layout:
+
+- Top 20%: Bold headline
+  - "STOP WASTING TOKENS"
+  - Large, bold, white text on dark background
+  - Centered, high contrast
+
+- Middle 60%: Side-by-side comparison boxes
+
+  LEFT BOX (Before):
+  - Red border (3-4px)
+  - Dark background
+  - 20+ tiny tool icons crowded together
+  - Large "2000" in red at bottom
+  - Label: "TOKENS" below number
+  - Visual chaos and inefficiency
+
+  RIGHT BOX (After):
+  - Green border (3-4px)
+  - Dark background
+  - 3 large, clear tool icons with space
+  - Large "300" in green at bottom
+  - Label: "TOKENS" below number
+  - Visual clarity and efficiency
+
+  CENTER: Arrow/lightning bolt between boxes
+  - Bright cyan (#00D9FF)
+  - Glowing effect
+  - Suggests transformation
+
+- Bottom 20%: Branding and CTA
+  - "ElBruno.MCPToolRouter"
+  - "Try it free • .NET • Open Source"
+  - Small download icon or GitHub logo
+
+- Background:
+  - Deep gradient (blue to purple)
+  - Clean, modern, not competing with boxes
+
+- Typography:
+  - Bold, modern sans-serif
+  - High contrast white text
+  - Numbers large and impactful
+
+Key viral elements:
+✅ Dramatic before/after (proven format)
+✅ Visual and numerical contrast
+✅ Attention-grabbing headline
+✅ Clear problem → solution flow
+✅ Works at small thumbnail sizes
+```
+
+### DALL-E Prompt (Viral Version 3: Quote/Testimonial Style)
+
+```
+Create a testimonial-style viral social card (1080x1080 px, 1:1 square).
+
+Centered quote design:
+
+- Main content (70% of card):
+  - Large quotation marks (stylized, cyan #00D9FF)
+  - Bold statement in center:
+    "Reduced my LLM costs by 80% with one library"
+    or
+    "From 2000 tokens to 300. Game changer."
+  - Font: Large (48-60pt), bold, modern sans-serif
+  - Color: White with slight glow
+  - Line breaks for emphasis and readability
+
+- Attribution section:
+  - "- .NET Developers using MCPToolRouter"
+  - Smaller text, italicized
+  - Light gray color
+
+- Visual accents:
+  - Abstract tech elements (circuit lines, nodes)
+  - Low opacity (15-20%), not distracting
+  - Cyan and purple accent colors
+  - Suggests AI/technology theme
+
+- Bottom branding:
+  - "ElBruno.MCPToolRouter"
+  - "Free & Open Source"
+  - GitHub link or icon
+
+- Background:
+  - Rich gradient (deep blue → purple)
+  - Subtle texture or grain
+  - Premium, professional feel
+
+- Visual style:
+  - Testimonial/quote format (highly shareable)
+  - Emotional connection ("game changer")
+  - Social proof element
+  - Clean, readable, impactful
+
+Key viral elements:
+✅ Social proof format
+✅ Emotional language ("game changer")
+✅ Specific, believable numbers (80%, 2000→300)
+✅ Quote marks increase shareability
+✅ Professional but personal
 ```
 
 ### Color Palette

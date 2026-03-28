@@ -13,5 +13,6 @@
     <Project Path="src\samples\TokenComparisonMax\TokenComparisonMax.csproj" />
     <Project Path="src\samples\AgentWithToolRouter\AgentWithToolRouter.csproj" />
     <Project Path="src\samples\FunctionalToolsValidation\FunctionalToolsValidation.csproj" />
+    <Project Path="src\samples\LLMDistillationDemo\LLMDistillationDemo.csproj" />
   </Folder>
 </Solution>

@@ -288,12 +288,13 @@ await using var index = await ToolIndex.CreateAsync(tools, myGenerator, options)
 
 ## Samples
 
-Seven sample applications showcase different use cases for MCPToolRouter:
+Eight sample applications showcase different use cases for MCPToolRouter:
 
 | Sample | Description | Azure Required |
 |--------|-------------|:-:|
 | [BasicUsage](src/samples/BasicUsage/) | Getting started — index tools and search | ❌ |
 | [McpToolRouting](src/samples/McpToolRouting/) | Local LLM distillation for complex prompt routing | ❌ |
+| [LLMDistillationDemo](src/samples/LLMDistillationDemo/) | Mode 1 vs Mode 2 comparison with verbose prompts | ❌ |
 | [TokenComparison](src/samples/TokenComparison/) | Compare token usage: all tools vs. routed | ✅ |
 | [TokenComparisonMax](src/samples/TokenComparisonMax/) | Extreme 120+ tools scenario with rich Spectre.Console UX | ✅ |
 | [FilteredFunctionCalling](src/samples/FilteredFunctionCalling/) | End-to-end function calling with filtered tools | ✅ |
@@ -307,6 +308,10 @@ Getting started — index tools and search with semantic similarity. No Azure re
 ### McpToolRouting
 
 Demonstrates local LLM-powered tool routing with prompt distillation. 28 realistic MCP tools, complex multi-part prompt handling, and token savings analysis. No Azure required.
+
+### LLMDistillationDemo
+
+Head-to-head comparison of Mode 1 (embeddings-only) vs Mode 2 (LLM-distilled) across 7 scenarios with long, verbose, conversational prompts. Shows why Mode 2 exists — when users ramble, LLM distillation extracts core intent for better tool selection. No Azure required.
 
 ### TokenComparison
 

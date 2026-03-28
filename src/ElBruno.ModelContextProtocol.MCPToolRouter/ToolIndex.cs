@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Numerics;
 using ElBruno.LocalEmbeddings;
@@ -23,9 +24,13 @@ public sealed partial class ToolIndex : IToolIndex
     private readonly ILogger _logger;
     private readonly ReaderWriterLockSlim _lock = new();
 
+    // Query embedding cache (FIFO eviction when QueryCacheSize > 0)
+    private readonly ConcurrentDictionary<string, float[]> _queryCache = new();
+    private readonly ConcurrentQueue<string> _queryCacheOrder = new();
+
     private List<Tool> _tools;
     private List<float[]> _vectors;
-    private bool _disposed;
+    private int _disposed;
 
     private ToolIndex(
         IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator,
@@ -240,8 +245,33 @@ public sealed partial class ToolIndex : IToolIndex
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(topK);
         ArgumentOutOfRangeException.ThrowIfNegative(minScore);
 
-        var queryEmbedding = await _embeddingGenerator.GenerateEmbeddingAsync(prompt, cancellationToken: cancellationToken).ConfigureAwait(false);
-        var queryVector = queryEmbedding.Vector.ToArray();
+        float[] queryVector;
+        if (_options.QueryCacheSize > 0 && _queryCache.TryGetValue(prompt, out var cached))
+        {
+            queryVector = cached;
+            LogMessages.QueryCacheHit(_logger, prompt.Length > 50 ? prompt[..50] + "..." : prompt);
+        }
+        else
+        {
+            var queryEmbedding = await _embeddingGenerator.GenerateEmbeddingAsync(prompt, cancellationToken: cancellationToken).ConfigureAwait(false);
+            queryVector = queryEmbedding.Vector.ToArray();
+
+            if (_options.QueryCacheSize > 0)
+            {
+                LogMessages.QueryCacheMiss(_logger, prompt.Length > 50 ? prompt[..50] + "..." : prompt);
+                if (_queryCache.TryAdd(prompt, queryVector))
+                {
+                    _queryCacheOrder.Enqueue(prompt);
+
+                    // Evict oldest entries when cache exceeds configured size
+                    while (_queryCache.Count > _options.QueryCacheSize
+                           && _queryCacheOrder.TryDequeue(out var oldest))
+                    {
+                        _queryCache.TryRemove(oldest, out _);
+                    }
+                }
+            }
+        }
 
         _lock.EnterReadLock();
         try
@@ -300,6 +330,7 @@ public sealed partial class ToolIndex : IToolIndex
         {
             _tools.AddRange(toolArray);
             _vectors.AddRange(newVectors);
+            ClearQueryCache();
         }
         finally
         {
@@ -335,6 +366,7 @@ public sealed partial class ToolIndex : IToolIndex
             var removedCount = _tools.Count - newTools.Count;
             _tools = newTools;
             _vectors = newVectors;
+            ClearQueryCache();
 
             LogMessages.ToolsRemoved(_logger, removedCount, _tools.Count);
         }
@@ -383,8 +415,7 @@ public sealed partial class ToolIndex : IToolIndex
     /// </summary>
     public async ValueTask DisposeAsync()
     {
-        if (_disposed) return;
-        _disposed = true;
+        if (Interlocked.Exchange(ref _disposed, 1) == 1) return;
 
         if (_ownsGenerator)
             await DisposeGeneratorAsync(_embeddingGenerator).ConfigureAwait(false);
@@ -446,6 +477,12 @@ public sealed partial class ToolIndex : IToolIndex
         return mag == 0 ? 0 : dot / mag;
     }
 
+    private void ClearQueryCache()
+    {
+        _queryCache.Clear();
+        while (_queryCacheOrder.TryDequeue(out _)) { }
+    }
+
     #endregion
 
     #region High-Performance Logging
@@ -463,6 +500,12 @@ public sealed partial class ToolIndex : IToolIndex
 
         [LoggerMessage(EventId = 4, Level = LogLevel.Information, Message = "Removed {RemovedCount} tools (total: {TotalCount})")]
         public static partial void ToolsRemoved(ILogger logger, int removedCount, int totalCount);
+
+        [LoggerMessage(EventId = 5, Level = LogLevel.Debug, Message = "Query cache hit for '{PromptPreview}'")]
+        public static partial void QueryCacheHit(ILogger logger, string promptPreview);
+
+        [LoggerMessage(EventId = 6, Level = LogLevel.Debug, Message = "Query cache miss for '{PromptPreview}'")]
+        public static partial void QueryCacheMiss(ILogger logger, string promptPreview);
     }
 
     #endregion

@@ -349,4 +349,38 @@ public class ToolRouterTests : IClassFixture<SharedToolRouterFixture>
     }
 
     #endregion
+
+    #region Concurrent Dispose Tests
+
+    [Fact]
+    public async Task ToolRouter_ConcurrentDispose_DoesNotThrow()
+    {
+        // Arrange — create a fresh router (not the shared fixture)
+        var tools = new[] { new Tool { Name = "test_tool", Description = "A test tool" } };
+        var router = await ToolRouter.CreateAsync(tools);
+
+        // Act — fire 10 concurrent DisposeAsync calls
+        var tasks = Enumerable.Range(0, 10)
+            .Select(_ => router.DisposeAsync().AsTask())
+            .ToArray();
+
+        // Assert — no exceptions from concurrent disposal
+        var exception = await Record.ExceptionAsync(() => Task.WhenAll(tasks));
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public async Task ToolRouter_DoubleDispose_DoesNotThrow()
+    {
+        // Arrange
+        var tools = new[] { new Tool { Name = "test_tool", Description = "A test tool" } };
+        var router = await ToolRouter.CreateAsync(tools);
+
+        // Act & Assert — sequential double dispose must be safe
+        await router.DisposeAsync();
+        var exception = await Record.ExceptionAsync(async () => await router.DisposeAsync());
+        Assert.Null(exception);
+    }
+
+    #endregion
 }

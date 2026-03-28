@@ -21,7 +21,7 @@ public sealed partial class ToolRouter : IAsyncDisposable
     private readonly IChatClient? _chatClient;
     private readonly ToolRouterOptions _options;
     private readonly ILogger _logger;
-    private bool _disposed;
+    private int _disposed;
 
     private ToolRouter(
         IToolIndex index,
@@ -274,8 +274,7 @@ public sealed partial class ToolRouter : IAsyncDisposable
     /// </summary>
     public async ValueTask DisposeAsync()
     {
-        if (_disposed) return;
-        _disposed = true;
+        if (Interlocked.Exchange(ref _disposed, 1) == 1) return;
 
         if (_ownsIndex)
             await _index.DisposeAsync().ConfigureAwait(false);

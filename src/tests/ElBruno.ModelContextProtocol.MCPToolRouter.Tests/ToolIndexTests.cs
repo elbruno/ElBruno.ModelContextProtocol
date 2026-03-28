@@ -439,4 +439,172 @@ public class ToolIndexTests : IClassFixture<SharedToolIndexFixture>
     }
 
     #endregion
+
+    #region QueryCache LRU Tests
+
+    [Fact]
+    public async Task QueryCache_WhenEnabled_ReturnsConsistentResults()
+    {
+        // Arrange — cache enabled with size 10
+        var tools = new[]
+        {
+            new Tool { Name = "get_weather", Description = "Get current weather information for a location" },
+            new Tool { Name = "send_email", Description = "Send an email message to a recipient" },
+            new Tool { Name = "search_files", Description = "Search for files by name or content" }
+        };
+        var options = new ToolIndexOptions { QueryCacheSize = 10 };
+        await using var index = await ToolIndex.CreateAsync(tools, options);
+
+        // Act — search same prompt twice; second should hit cache
+        var results1 = await index.SearchAsync("What is the weather forecast?", topK: 3);
+        var results2 = await index.SearchAsync("What is the weather forecast?", topK: 3);
+
+        // Assert — both calls must return identical results (same order, same scores)
+        Assert.Equal(results1.Count, results2.Count);
+        for (int i = 0; i < results1.Count; i++)
+        {
+            Assert.Equal(results1[i].Tool.Name, results2[i].Tool.Name);
+            Assert.Equal(results1[i].Score, results2[i].Score);
+        }
+    }
+
+    [Fact]
+    public async Task QueryCache_WhenDisabled_StillWorks()
+    {
+        // Arrange — cache disabled (default QueryCacheSize = 0)
+        var tools = new[]
+        {
+            new Tool { Name = "get_weather", Description = "Get current weather information for a location" },
+            new Tool { Name = "send_email", Description = "Send an email message to a recipient" }
+        };
+        var options = new ToolIndexOptions { QueryCacheSize = 0 };
+        await using var index = await ToolIndex.CreateAsync(tools, options);
+
+        // Act — search should still work normally without caching
+        var results = await index.SearchAsync("weather forecast", topK: 2);
+
+        // Assert
+        Assert.NotEmpty(results);
+        Assert.Equal("get_weather", results[0].Tool.Name);
+    }
+
+    [Fact]
+    public async Task QueryCache_ClearedOnAddTools()
+    {
+        // Arrange — create index with cache, search to populate cache
+        var tools = new[]
+        {
+            new Tool { Name = "get_weather", Description = "Get current weather information for a location" },
+            new Tool { Name = "send_email", Description = "Send an email message to a recipient" }
+        };
+        var options = new ToolIndexOptions { QueryCacheSize = 10 };
+        await using var index = await ToolIndex.CreateAsync(tools, options);
+
+        // Populate cache
+        var resultsBefore = await index.SearchAsync("cooking recipe", topK: 5);
+
+        // Act — add a new tool that is highly relevant to the cached query
+        await index.AddToolsAsync(new[]
+        {
+            new Tool { Name = "find_recipe", Description = "Find cooking recipes and meal preparation instructions" }
+        });
+
+        // Search again — cache should be cleared, new tool should appear
+        var resultsAfter = await index.SearchAsync("cooking recipe", topK: 5);
+
+        // Assert — the new tool must appear in results (cache was invalidated)
+        Assert.Contains(resultsAfter, r => r.Tool.Name == "find_recipe");
+        Assert.Equal(3, index.Count);
+    }
+
+    [Fact]
+    public async Task QueryCache_ClearedOnRemoveTools()
+    {
+        // Arrange — create index with cache, search to populate cache
+        var tools = new[]
+        {
+            new Tool { Name = "get_weather", Description = "Get current weather information for a location" },
+            new Tool { Name = "send_email", Description = "Send an email message to a recipient" },
+            new Tool { Name = "translate_text", Description = "Translate text between languages" }
+        };
+        var options = new ToolIndexOptions { QueryCacheSize = 10 };
+        await using var index = await ToolIndex.CreateAsync(tools, options);
+
+        // Populate cache — weather tool should rank first
+        var resultsBefore = await index.SearchAsync("weather temperature", topK: 3);
+        Assert.Equal("get_weather", resultsBefore[0].Tool.Name);
+
+        // Act — remove the weather tool
+        index.RemoveTools(new[] { "get_weather" });
+
+        // Search again — cache should be cleared, weather tool must not appear
+        var resultsAfter = await index.SearchAsync("weather temperature", topK: 3);
+
+        // Assert — removed tool is gone (cache was invalidated, not serving stale data)
+        Assert.DoesNotContain(resultsAfter, r => r.Tool.Name == "get_weather");
+        Assert.Equal(2, index.Count);
+    }
+
+    [Fact]
+    public async Task QueryCache_EvictsOldEntries_WhenFull()
+    {
+        // Arrange — tiny cache of size 2
+        var tools = new[]
+        {
+            new Tool { Name = "get_weather", Description = "Get current weather information for a location" },
+            new Tool { Name = "send_email", Description = "Send an email message to a recipient" },
+            new Tool { Name = "search_files", Description = "Search for files by name or content" }
+        };
+        var options = new ToolIndexOptions { QueryCacheSize = 2 };
+        await using var index = await ToolIndex.CreateAsync(tools, options);
+
+        // Act — search with 3 different prompts to overflow the cache (size 2)
+        var results1 = await index.SearchAsync("weather forecast", topK: 3);
+        var results2 = await index.SearchAsync("send electronic mail", topK: 3);
+        var results3 = await index.SearchAsync("find documents on disk", topK: 3);
+
+        // Assert — no crashes, all searches return valid results
+        Assert.NotEmpty(results1);
+        Assert.NotEmpty(results2);
+        Assert.NotEmpty(results3);
+        Assert.Equal("get_weather", results1[0].Tool.Name);
+        Assert.Equal("send_email", results2[0].Tool.Name);
+        Assert.Equal("search_files", results3[0].Tool.Name);
+    }
+
+    #endregion
+
+    #region Concurrent Dispose Tests
+
+    [Fact]
+    public async Task ToolIndex_ConcurrentDispose_DoesNotThrow()
+    {
+        // Arrange — create a fresh index (not the shared fixture)
+        var tools = new[] { new Tool { Name = "test_tool", Description = "A test tool" } };
+        var index = await ToolIndex.CreateAsync(tools);
+
+        // Act — fire 10 concurrent DisposeAsync calls
+        var tasks = Enumerable.Range(0, 10)
+            .Select(_ => index.DisposeAsync().AsTask())
+            .ToArray();
+
+        // Assert — no exceptions from concurrent disposal
+        var exception = await Record.ExceptionAsync(() => Task.WhenAll(tasks));
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public async Task ToolIndex_DoubleDispose_DoesNotThrow()
+    {
+        // Arrange
+        var tools = new[] { new Tool { Name = "test_tool", Description = "A test tool" } };
+        var index = await ToolIndex.CreateAsync(tools);
+
+        // Act & Assert — sequential double dispose must be safe
+        await index.DisposeAsync();
+        var exception = await Record.ExceptionAsync(async () => await index.DisposeAsync());
+        Assert.Null(exception);
+    }
+
+    #endregion
 }

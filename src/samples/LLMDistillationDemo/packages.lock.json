@@ -2,6 +2,16 @@
   "version": 1,
   "dependencies": {
     "net8.0": {
+      "Microsoft.ML.OnnxRuntimeGenAI.DirectML": {
+        "type": "Direct",
+        "requested": "[0.12.2, )",
+        "resolved": "0.12.2",
+        "contentHash": "ZXNir3rkSmeOXbZQp9Wo+p3zZBgzxo4nXufLgAbfDeKGNlrx+gwc2MjqWIvVau7WbZds+0fg+6ftHEsktCQsGw==",
+        "dependencies": {
+          "Microsoft.ML.OnnxRuntime.DirectML": "1.23.0",
+          "Microsoft.ML.OnnxRuntimeGenAI.Managed": "0.12.2"
+        }
+      },
       "ElBruno.HuggingFace.Downloader": {
         "type": "Transitive",
         "resolved": "0.6.0",
@@ -42,6 +52,11 @@
         "type": "Transitive",
         "resolved": "3.30.2",
         "contentHash": "Y2aOVLIt75yeeEWigg9V9YnjsEm53sADtLGq0gLhwaXpk3iu8tYSoauolyhenagA2sWno2TQ2WujI0HQd6s1Vw=="
+      },
+      "Microsoft.AI.DirectML": {
+        "type": "Transitive",
+        "resolved": "1.15.4",
+        "contentHash": "UblWBtQxcXcxwcn+jh0pfbq4zv2b6w7ThJ35qUV9gd8niGofrFWzVqZ6yqYDMiE+IJf8LRpG+H1cZpswceOeiA=="
       },
       "Microsoft.Extensions.AI.Abstractions": {
         "type": "Transitive",
@@ -174,6 +189,15 @@
         "contentHash": "BciFVPzmPP+RNbBcCXVUhuXjrPlj0CZxVGShP3EThxrnDMmEx9QoYntAcnaOLN8uPacHb8uVyGBWMOn/MgSKLw==",
         "dependencies": {
           "Microsoft.ML.OnnxRuntime.Managed": "1.24.2"
+        }
+      },
+      "Microsoft.ML.OnnxRuntime.DirectML": {
+        "type": "Transitive",
+        "resolved": "1.23.0",
+        "contentHash": "zABy69z74iSy05blZpfFsm+3IETjJniH1hDwzAkSyrjKW96yHnEQ1zd1P+LNmuQWqnLkx5LOKQQ487ndsxTX6g==",
+        "dependencies": {
+          "Microsoft.AI.DirectML": "1.15.4",
+          "Microsoft.ML.OnnxRuntime.Managed": "1.23.0"
         }
       },
       "Microsoft.ML.OnnxRuntime.Managed": {

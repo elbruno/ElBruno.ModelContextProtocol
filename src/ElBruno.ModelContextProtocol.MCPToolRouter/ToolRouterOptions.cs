@@ -52,6 +52,13 @@ public sealed class ToolRouterOptions
     public string? EmbeddingModelCacheDirectory { get; set; }
 
     /// <summary>
+    /// The local LLM model to use for prompt distillation when no IChatClient is provided.
+    /// Only used by the zero-setup SearchUsingLLMAsync overload.
+    /// Default uses ElBruno.LocalLLMs default model.
+    /// </summary>
+    public ElBruno.LocalLLMs.ModelDefinition? LocalLLMModel { get; set; }
+
+    /// <summary>
     /// Options for the underlying <see cref="ToolIndex"/>. If null, uses defaults.
     /// </summary>
     public ToolIndexOptions? IndexOptions { get; set; }

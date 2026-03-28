@@ -1,10 +1,5 @@
-using ElBruno.LocalLLMs;
 using ElBruno.ModelContextProtocol.MCPToolRouter;
 using ModelContextProtocol.Protocol;
-
-// Initialize local LLM for intelligent tool distillation
-var llmOptions = new LocalLLMsOptions { Model = KnownModels.Qwen25_05BInstruct };
-using var chatClient = await LocalChatClient.CreateAsync(llmOptions);
 
 // Define a comprehensive set of 28 realistic MCP tools across various domains
 var allTools = new Tool[]
@@ -54,7 +49,7 @@ Console.WriteLine("🚀 MCP Tool Router with Local LLM Distillation");
 Console.WriteLine("================================================\n");
 
 // Scenario 1: Complex verbose prompt → distilled intent → filtered tools
-Console.WriteLine("📌 SCENARIO 1: Complex Prompt → Distilled Intent");
+Console.WriteLine("📌 SCENARIO 1: Complex Prompt → LLM Distillation");
 Console.WriteLine("-------------------------------------------------");
 
 var complexPrompt = @"I need to handle multiple tasks today. First, I'm planning a business trip to Tokyo and I need to:
@@ -68,11 +63,8 @@ Additionally, I should search for the latest technology news and translate some 
 
 Console.WriteLine($"📝 Original prompt length: {complexPrompt.Length} characters");
 
-// Create router with distillation enabled
-await using var routerWithDistillation = await ToolRouter.CreateAsync(allTools, chatClient);
-
-// Route the complex prompt
-var routedResults = await routerWithDistillation.RouteAsync(complexPrompt, topK: 7);
+// One-liner: Route using local LLM distillation (zero-setup)
+var routedResults = await ToolRouter.SearchUsingLLMAsync(complexPrompt, allTools, topK: 7);
 
 Console.WriteLine($"✨ Distilled top-7 most relevant tools:\n");
 foreach (var r in routedResults)
@@ -82,17 +74,15 @@ foreach (var r in routedResults)
 
 Console.WriteLine();
 
-// Scenario 2: Simple prompt → direct routing (ToolRouter without distillation)
-Console.WriteLine("📌 SCENARIO 2: Simple Prompt → Direct Routing");
+// Scenario 2: Simple prompt → direct routing (embeddings-only, no LLM)
+Console.WriteLine("📌 SCENARIO 2: Simple Prompt → Embeddings Search");
 Console.WriteLine("-------------------------------------------");
 
 var simplePrompt = "What's the weather like in Tokyo?";
 Console.WriteLine($"📝 Simple prompt: \"{simplePrompt}\"\n");
 
-// Create router without distillation (semantic search only)
-await using var routerSimple = await ToolRouter.CreateAsync(allTools);
-
-var simpleResults = await routerSimple.RouteAsync(simplePrompt, topK: 3);
+// One-liner: Route using embeddings only (no LLM needed)
+var simpleResults = await ToolRouter.SearchAsync(simplePrompt, allTools, topK: 3);
 
 Console.WriteLine("🎯 Top-3 most relevant tools:\n");
 foreach (var r in simpleResults)
@@ -133,14 +123,27 @@ Console.WriteLine();
 // Show advanced usage patterns
 Console.WriteLine("📌 ADVANCED USAGE PATTERNS");
 Console.WriteLine("--------------------------");
-Console.WriteLine("Pattern 1 - One-shot static method:");
+
+Console.WriteLine("Pattern 1 - Mode 1 (Embeddings-only, one-liner):");
 Console.WriteLine(@"
-var results = await ToolRouter.RouteAsync(tools, prompt, chatClient, topK: 5);
+var results = await ToolRouter.SearchAsync(prompt, tools, topK: 3);
 ");
 
-Console.WriteLine("Pattern 2 - DI registration (ASP.NET):");
+Console.WriteLine("Pattern 2 - Mode 2 (LLM-distilled, one-liner):");
 Console.WriteLine(@"
-services.AddMcpToolRouter(tools, chatClient, opts => opts.TopK = 5);
+var results = await ToolRouter.SearchUsingLLMAsync(complexPrompt, tools, chatClient, topK: 5);
+");
+
+Console.WriteLine("Pattern 3 - Reusable instance (Mode 1 for high-throughput scenarios):");
+Console.WriteLine(@"
+await using var index = await ToolIndex.CreateAsync(tools);
+var results = await index.SearchAsync(prompt, topK: 3);
+");
+
+Console.WriteLine("Pattern 4 - Reusable instance (Mode 2 for high-throughput scenarios):");
+Console.WriteLine(@"
+await using var router = await ToolRouter.CreateAsync(tools, chatClient);
+var results = await router.RouteAsync(complexPrompt, topK: 5);
 ");
 
 Console.WriteLine("\n✅ Demo completed successfully!");

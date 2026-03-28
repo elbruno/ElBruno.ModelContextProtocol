@@ -134,10 +134,10 @@ public class ToolRouterTests : IClassFixture<SharedToolRouterFixture>
 
     #endregion
 
-    #region Static One-Shot Tests
+    #region SearchAsync Static Tests (Mode 1: Embeddings-only)
 
     [Fact]
-    public async Task RouteAsync_StaticOneShot_ReturnsResults()
+    public async Task SearchAsync_ReturnsRelevantTools()
     {
         // Arrange
         var tools = new[]
@@ -147,11 +147,131 @@ public class ToolRouterTests : IClassFixture<SharedToolRouterFixture>
         };
 
         // Act
-        var results = await ToolRouter.RouteAsync(tools, "What's the weather like?");
+        var results = await ToolRouter.SearchAsync("What's the weather like?", tools);
 
         // Assert
         Assert.NotEmpty(results);
         Assert.Equal("get_weather", results[0].Tool.Name);
+    }
+
+    [Fact]
+    public async Task SearchAsync_RespectsTopK()
+    {
+        // Arrange
+        var tools = new[]
+        {
+            new Tool { Name = "get_weather", Description = "Get current weather information for a location" },
+            new Tool { Name = "send_email", Description = "Send an email message to a recipient" },
+            new Tool { Name = "search_files", Description = "Search for files by name or content" },
+            new Tool { Name = "calculate_math", Description = "Perform mathematical calculations" },
+            new Tool { Name = "translate_text", Description = "Translate text between languages" }
+        };
+
+        // Act
+        var results = await ToolRouter.SearchAsync("find something useful", tools, topK: 2);
+
+        // Assert
+        Assert.Equal(2, results.Count);
+    }
+
+    [Fact]
+    public async Task SearchAsync_WithOptions_UsesCustomSettings()
+    {
+        // Arrange
+        var tools = new[]
+        {
+            new Tool { Name = "get_weather", Description = "Get current weather information for a location" },
+            new Tool { Name = "send_email", Description = "Send an email message to a recipient" }
+        };
+        var options = new ToolRouterOptions { TopK = 1, MinScore = 0.0f };
+
+        // Act
+        var results = await ToolRouter.SearchAsync("weather forecast", tools, options: options);
+
+        // Assert
+        Assert.NotEmpty(results);
+    }
+
+    [Fact]
+    public async Task SearchAsync_NullPrompt_Throws()
+    {
+        // Arrange
+        var tools = new[]
+        {
+            new Tool { Name = "test_tool", Description = "A test tool" }
+        };
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(
+            async () => await ToolRouter.SearchAsync(null!, tools));
+    }
+
+    [Fact]
+    public async Task SearchAsync_NullTools_Throws()
+    {
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(
+            async () => await ToolRouter.SearchAsync("test prompt", null!));
+    }
+
+    #endregion
+
+    #region SearchUsingLLMAsync Static Tests (Mode 2: LLM-distilled)
+
+    [Fact]
+    public async Task SearchUsingLLMAsync_WithFakeChatClient_ReturnsResults()
+    {
+        // Arrange — LLM distills the prompt to something weather-related
+        var tools = new[]
+        {
+            new Tool { Name = "get_weather", Description = "Get current weather information for a location" },
+            new Tool { Name = "send_email", Description = "Send an email message to a recipient" }
+        };
+        var chatClient = new FakeChatClient("weather forecast for today");
+
+        // Act
+        var results = await ToolRouter.SearchUsingLLMAsync(
+            "What's the atmospheric condition outside?", tools, chatClient);
+
+        // Assert
+        Assert.NotEmpty(results);
+        Assert.Equal("get_weather", results[0].Tool.Name);
+    }
+
+    [Fact]
+    public async Task SearchUsingLLMAsync_NullChatClient_Throws()
+    {
+        // Arrange
+        var tools = new[]
+        {
+            new Tool { Name = "test_tool", Description = "A test tool" }
+        };
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(
+            async () => await ToolRouter.SearchUsingLLMAsync("test prompt", tools, null!));
+    }
+
+    [Fact]
+    public async Task SearchUsingLLMAsync_DistillsPrompt()
+    {
+        // Arrange — The fake LLM will "distill" the vague prompt to "send email message"
+        // which should make the email tool rank higher than with the raw prompt
+        var tools = new[]
+        {
+            new Tool { Name = "get_weather", Description = "Get current weather information for a location" },
+            new Tool { Name = "send_email", Description = "Send an email message to a recipient" },
+            new Tool { Name = "search_files", Description = "Search for files by name or content" }
+        };
+        var chatClient = new FakeChatClient("send email message to someone");
+
+        // Act — vague prompt that the LLM distills to email-related intent
+        var results = await ToolRouter.SearchUsingLLMAsync(
+            "I need to communicate with my colleague electronically", tools, chatClient);
+
+        // Assert — email tool should rank first because the distilled prompt is email-specific
+        Assert.NotEmpty(results);
+        Assert.Equal("send_email", results[0].Tool.Name);
     }
 
     #endregion

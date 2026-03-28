@@ -179,28 +179,92 @@ public sealed partial class ToolRouter : IAsyncDisposable
         return results;
     }
 
+    #endregion
+
+    #region Simplified Static API
+
     /// <summary>
-    /// Convenience one-shot method that creates a temporary index, routes the prompt, and disposes the index.
-    /// Useful for simple scenarios that don't require reusing the index across multiple queries.
+    /// Embeddings-only semantic search — one-liner for finding the most relevant tools.
+    /// Creates a temporary index, searches, and disposes. No LLM required.
     /// </summary>
+    /// <param name="userPrompt">The user prompt to search for.</param>
     /// <param name="tools">The MCP tool definitions to search.</param>
-    /// <param name="userPrompt">The user prompt to route.</param>
-    /// <param name="chatClient">Optional chat client for prompt distillation.</param>
     /// <param name="topK">Maximum number of tools to return. Default is 5.</param>
     /// <param name="minScore">Minimum cosine similarity score. Default is 0.0.</param>
+    /// <param name="options">Configuration options. If null, uses defaults.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>A list of matching tools sorted by relevance (highest score first).</returns>
-    public static async Task<IReadOnlyList<ToolSearchResult>> RouteAsync(
-        IEnumerable<Tool> tools,
+    public static async Task<IReadOnlyList<ToolSearchResult>> SearchAsync(
         string userPrompt,
-        IChatClient? chatClient = null,
+        IEnumerable<Tool> tools,
         int topK = 5,
         float minScore = 0.0f,
+        ToolRouterOptions? options = null,
         CancellationToken ct = default)
     {
-        var options = new ToolRouterOptions { TopK = topK, MinScore = minScore };
+        options ??= new ToolRouterOptions();
+        options.EnableDistillation = false;
+        await using var router = await CreateAsync(tools, chatClient: null, options, ct).ConfigureAwait(false);
+        return await router.RouteAsync(userPrompt, topK, minScore, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// One-shot search with LLM prompt distillation using a local LLM.
+    /// Internally downloads and uses a small local model for prompt distillation.
+    /// For custom LLM backends (Azure OpenAI, Ollama, etc.), use the overload that accepts an IChatClient.
+    /// </summary>
+    /// <param name="userPrompt">The user prompt to distill and search for.</param>
+    /// <param name="tools">The MCP tool definitions to search.</param>
+    /// <param name="topK">Maximum number of tools to return. Default is 5.</param>
+    /// <param name="minScore">Minimum cosine similarity score. Default is 0.0.</param>
+    /// <param name="options">Configuration options. If null, uses defaults.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A list of matching tools sorted by relevance (highest score first).</returns>
+    public static async Task<IReadOnlyList<ToolSearchResult>> SearchUsingLLMAsync(
+        string userPrompt,
+        IEnumerable<Tool> tools,
+        int topK = 5,
+        float minScore = 0.0f,
+        ToolRouterOptions? options = null,
+        CancellationToken ct = default)
+    {
+        var llmOptions = new ElBruno.LocalLLMs.LocalLLMsOptions();
+        if (options?.LocalLLMModel is not null)
+            llmOptions.Model = options.LocalLLMModel;
+
+        using var chatClient = await ElBruno.LocalLLMs.LocalChatClient.CreateAsync(
+            llmOptions, progress: null, ct).ConfigureAwait(false);
+
+        return await SearchUsingLLMAsync(userPrompt, tools, chatClient, topK, minScore, options, ct)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// LLM-distilled semantic search — distills the prompt via an LLM before searching.
+    /// Creates a temporary index, distills, searches, and disposes.
+    /// </summary>
+    /// <param name="userPrompt">The user prompt to distill and search for.</param>
+    /// <param name="tools">The MCP tool definitions to search.</param>
+    /// <param name="chatClient">The chat client used for prompt distillation.</param>
+    /// <param name="topK">Maximum number of tools to return. Default is 5.</param>
+    /// <param name="minScore">Minimum cosine similarity score. Default is 0.0.</param>
+    /// <param name="options">Configuration options. If null, uses defaults.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A list of matching tools sorted by relevance (highest score first).</returns>
+    public static async Task<IReadOnlyList<ToolSearchResult>> SearchUsingLLMAsync(
+        string userPrompt,
+        IEnumerable<Tool> tools,
+        IChatClient chatClient,
+        int topK = 5,
+        float minScore = 0.0f,
+        ToolRouterOptions? options = null,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(chatClient);
+        options ??= new ToolRouterOptions();
+        options.EnableDistillation = true;
         await using var router = await CreateAsync(tools, chatClient, options, ct).ConfigureAwait(false);
-        return await router.RouteAsync(userPrompt, ct: ct).ConfigureAwait(false);
+        return await router.RouteAsync(userPrompt, topK, minScore, ct).ConfigureAwait(false);
     }
 
     #endregion

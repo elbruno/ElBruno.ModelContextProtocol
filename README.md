@@ -25,6 +25,29 @@ A high-performance semantic search engine for Model Context Protocol tools. MCPT
 dotnet add package ElBruno.ModelContextProtocol.MCPToolRouter
 ```
 
+## Quick Start
+
+**The simplest way:** Use a one-liner static method for instant tool routing.
+
+```csharp
+using ElBruno.ModelContextProtocol.MCPToolRouter;
+using ModelContextProtocol.Protocol;
+
+var tools = new[]
+{
+    new Tool { Name = "get_weather", Description = "Get weather for a location" },
+    new Tool { Name = "send_email", Description = "Send an email message" },
+};
+
+// Mode 1: Embeddings only (fastest, no LLM)
+var results = await ToolRouter.SearchAsync("What's the weather in Tokyo?", tools, topK: 3);
+
+foreach (var r in results)
+    Console.WriteLine($"{r.Tool.Name}: {r.Score:F3}");
+```
+
+---
+
 ## How It Works — Two Modes
 
 MCPToolRouter supports **two distinct modes** for finding the right tools. Choose based on your prompt complexity and speed requirements:
@@ -53,7 +76,7 @@ MCPToolRouter supports **two distinct modes** for finding the right tools. Choos
 
 ---
 
-### Mode 1: Embeddings Filter (No LLM Needed)
+### Mode 1: Embeddings Filter (No LLM Needed) — One-Liner
 
 **Use when:** Your prompt is clear and single-intent.
 
@@ -62,11 +85,12 @@ MCPToolRouter supports **two distinct modes** for finding the right tools. Choos
 **Speed:** ~1–5ms per query  
 **Dependencies:** Local embeddings only (~90MB, auto-downloaded)
 
+**Static API (Recommended):**
+
 ```csharp
 using ElBruno.ModelContextProtocol.MCPToolRouter;
 using ModelContextProtocol.Protocol;
 
-// 1. Define your tools (or load from an MCP server)
 var tools = new[]
 {
     new Tool { Name = "get_weather", Description = "Get current weather for a location" },
@@ -76,11 +100,8 @@ var tools = new[]
     new Tool { Name = "translate_text", Description = "Translate text between languages" }
 };
 
-// 2. Build the index (one-time cost — reuse across prompts)
-await using var index = await ToolIndex.CreateAsync(tools);
-
-// 3. Search — returns tools ranked by relevance
-var results = await index.SearchAsync("What's the temperature outside?", topK: 3);
+// One-liner: route and get results immediately
+var results = await ToolRouter.SearchAsync("What's the temperature outside?", tools, topK: 3);
 
 foreach (var r in results)
     Console.WriteLine($"  {r.Tool.Name}: {r.Score:F3}");
@@ -90,9 +111,20 @@ foreach (var r in results)
 //   translate_text: 0.201
 ```
 
+**Advanced: Reusable Instance (for performance-critical scenarios)**
+
+For servers, agents, or batch operations, build and reuse an index to avoid re-embedding:
+
+```csharp
+// Build once, reuse many times (e.g., in a web API or agent loop)
+await using var index = await ToolIndex.CreateAsync(tools);
+
+var results = await index.SearchAsync("What's the temperature outside?", topK: 3);
+```
+
 ---
 
-### Mode 2: LLM-Assisted Routing (Local Distillation)
+### Mode 2: LLM-Assisted Routing (Local Distillation) — One-Liner
 
 **Use when:** Your prompt is verbose, multi-part, or conversational.
 
@@ -101,16 +133,17 @@ foreach (var r in results)
 **Speed:** ~50–200ms (LLM inference + embedding)  
 **Dependencies:** Local embeddings (~90MB) + local LLM (~1GB, auto-downloaded)
 
+**Static API (Recommended):**
+
 ```csharp
 using ElBruno.LocalLLMs;
 using ElBruno.ModelContextProtocol.MCPToolRouter;
 using ModelContextProtocol.Protocol;
 
-// 1. Create a local LLM for prompt distillation
-var llmOptions = new LocalLLMsOptions { Model = KnownModels.Qwen25_05BInstruct };
-using var chatClient = await LocalChatClient.CreateAsync(llmOptions);
+// Create a local LLM for prompt distillation (minimal setup)
+using var chatClient = await LocalChatClient.CreateAsync(
+    new LocalLLMsOptions { Model = KnownModels.Qwen25_05BInstruct });
 
-// 2. Define your tools
 var tools = new Tool[] 
 {
     new Tool { Name = "get_weather", Description = "Get current weather for a location" },
@@ -120,14 +153,11 @@ var tools = new Tool[]
     new Tool { Name = "translate_text", Description = "Translate text between languages" }
 };
 
-// 3. Create a router with LLM distillation enabled
-await using var router = await ToolRouter.CreateAsync(tools, chatClient);
-
-// 4. Route a complex, verbose prompt — the LLM distills it first
-var results = await router.RouteAsync(
+// One-liner: distill + route + get results
+var results = await ToolRouter.SearchUsingLLMAsync(
     "Hey, I was thinking about my trip next week and I need to know " +
     "if it's going to rain in Tokyo. Also remind me to call the dentist.",
-    topK: 5);
+    tools, chatClient, topK: 5);
 
 // The LLM distills this to something like: "Check weather in Tokyo, set reminder"
 // Then embeddings find the best matching tools
@@ -139,6 +169,18 @@ foreach (var r in results)
 //   translate_text: 0.156
 ```
 
+**Advanced: Reusable Instance (for performance-critical scenarios)**
+
+For servers or agents running multiple queries, create a reusable router instance:
+
+```csharp
+// Build once, reuse for multiple prompts
+await using var router = await ToolRouter.CreateAsync(tools, chatClient);
+
+var results = await router.RouteAsync(
+    "Complex prompt here...", topK: 5);
+```
+
 ---
 
 ### When to Use Which Mode
@@ -148,7 +190,8 @@ foreach (var r in results)
 | **Best for** | Clear, single-intent prompts | Verbose, multi-part, conversational prompts |
 | **Speed** | ~1–5ms per query | ~50–200ms (includes LLM inference) |
 | **Dependencies** | Local embeddings only (~90MB) | Local embeddings + local LLM (~1GB) |
-| **API** | `ToolIndex.SearchAsync()` | `ToolRouter.CreateAsync(tools, chatClient)` |
+| **Static API** | `ToolRouter.SearchAsync()` | `ToolRouter.SearchUsingLLMAsync()` |
+| **Instance API** | `ToolIndex.CreateAsync()` + `SearchAsync()` | `ToolRouter.CreateAsync()` + `RouteAsync()` |
 | **Example prompt** | "Send an email" | "I need to email Alice about the deadline and check the weather" |
 | **Accuracy** | High for clear intents | Higher for ambiguous/complex intents |
 
@@ -159,7 +202,9 @@ foreach (var r in results)
 Both modes work seamlessly with Azure OpenAI — route first, then send only the filtered tools to reduce token costs.
 
 ```csharp
-// using Azure; Azure.AI.OpenAI; OpenAI.Chat;
+using Azure;
+using Azure.AI.OpenAI;
+using OpenAI.Chat;
 
 // Create Azure OpenAI ChatClient
 var chatClient = new AzureOpenAIClient(
@@ -167,8 +212,8 @@ var chatClient = new AzureOpenAIClient(
     new AzureKeyCredential("your-api-key"))
     .GetChatClient("gpt-5-mini");
 
-// Route to relevant tools only (instead of sending ALL tools)
-var relevant = await index.SearchAsync(userPrompt, topK: 3);
+// Route to relevant tools only (using Mode 1 as example)
+var relevant = await ToolRouter.SearchAsync(userPrompt, allTools, topK: 3);
 
 // Add only filtered tools to the chat call — saving tokens!
 var chatOptions = new ChatCompletionOptions();

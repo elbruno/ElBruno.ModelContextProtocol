@@ -32,7 +32,7 @@ public sealed class PromptDistillerOptions
     /// Prompts exceeding this length are truncated. Default is 4096.
     /// Set to 0 or negative to disable truncation.
     /// </summary>
-    public int MaxPromptLength { get; set; } = 4096;
+    public int MaxPromptLength { get; set; } = 300;
 }
 
 /// <summary>
@@ -119,10 +119,22 @@ public static partial class PromptDistiller
             Temperature = options.Temperature
         };
 
-        var response = await client.GetResponseAsync(messages, chatOptions, ct).ConfigureAwait(false);
-        var distilled = response.Text?.Trim() ?? userPrompt;
+        try
+        {
+            var response = await client.GetResponseAsync(messages, chatOptions, ct).ConfigureAwait(false);
+            var distilled = response.Text?.Trim() ?? userPrompt;
 
-        return distilled.Length < MinDistilledLength ? userPrompt : distilled;
+            return distilled.Length < MinDistilledLength ? userPrompt : distilled;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            LogMessages.DistillationFailed(logger, ex.Message);
+            return userPrompt;
+        }
     }
 
     #region High-Performance Logging
@@ -131,6 +143,9 @@ public static partial class PromptDistiller
     {
         [LoggerMessage(EventId = 200, Level = LogLevel.Warning, Message = "User prompt truncated from {OriginalLength} to {MaxLength} characters before distillation")]
         public static partial void PromptTruncated(ILogger logger, int originalLength, int maxLength);
+
+        [LoggerMessage(EventId = 201, Level = LogLevel.Warning, Message = "LLM distillation failed, falling back to original prompt: {ErrorMessage}")]
+        public static partial void DistillationFailed(ILogger logger, string errorMessage);
     }
 
     #endregion

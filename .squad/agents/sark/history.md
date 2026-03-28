@@ -48,3 +48,18 @@ Completed comprehensive security audit as part of coordinated audit sprint with 
 
 **Decision merged to:** `.squad/decisions.md` (Decision §9 — 5-Phase Implementation Roadmap)
 **Orchestration logged to:** `.squad/orchestration-log/2026-03-28T02-55-sark-security-audit.md`
+
+### 2025-07-25 — Fixed Script Injection in publish.yml (Phase 1, Item 1.2)
+
+**Scope:** `.github/workflows/publish.yml` — all `${{ }}` interpolations in `run:` blocks.
+
+**Changes made (4 fixes):**
+
+1. **Determine version step (P0 — primary injection vector):** Replaced direct `${{ github.ref }}` and `${{ github.event.inputs.version }}` interpolation in bash with `env:` block (`GIT_REF`, `INPUT_VERSION`). A malicious `workflow_dispatch` input could previously execute arbitrary shell commands and exfiltrate the NuGet API key.
+2. **Build step (defense-in-depth):** Moved `${{ steps.version.outputs.version }}` to `env: PACKAGE_VERSION`. While the version is validated by our regex, env vars prevent any future bypass.
+3. **Pack step (defense-in-depth):** Same treatment as Build step.
+4. **Push to NuGet step (defense-in-depth):** Moved `${{ steps.nuget-login.outputs.NUGET_API_KEY }}` to `env: NUGET_API_KEY`. Prevents secret from appearing in shell expansion and process listings.
+
+**Audit of other workflows:** Reviewed all 8 workflow files in `.github/workflows/`. The other 7 workflows use `actions/github-script@v7` (JavaScript context) or have `${{ }}` only in YAML parameter positions (`with:`, `github-token:`, `if:`). No additional shell injection vectors found.
+
+**Decision:** `.squad/decisions/inbox/sark-publish-injection-fix.md`

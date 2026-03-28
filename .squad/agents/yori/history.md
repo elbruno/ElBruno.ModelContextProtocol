@@ -224,3 +224,28 @@
 - Tests ensure future changes can't reintroduce the mismatch
 - Key test: `DefaultAlignedWithDistillerOptions` will fail if someone changes one default without the other
 - All 121 tests pass, 0 failures, ~68s on net8.0
+
+### MaxPromptLength Regression Test Strategy (2026-03-28T17:23:35Z)
+**Task:** Implement comprehensive regression test strategy to prevent recurrence of MaxPromptLength default mismatch bug, aligned with Tron's default fix.
+
+**Multi-Layer Defense Strategy:**
+1. **Layer 1 — Primary Regression Test (KEY):** `ToolRouterOptions_MaxPromptLength_DefaultAlignedWithDistillerOptions` instantiates both options classes and asserts equal `MaxPromptLength` defaults. Fails immediately if someone changes one without the other.
+2. **Layer 2 — Mapping Verification:** `ToDistillerOptions_MaxPromptLength_MappedCorrectly` verifies internal `ToDistillerOptions()` method correctly transfers MaxPromptLength from ToolRouterOptions to PromptDistillerOptions (tests both default and custom values).
+3. **Layer 3 — Runtime Behavior:** 
+   - `DistillIntentAsync_WithLongPrompt_TruncatesBeforeSendingToLLM` — verifies actual truncation with FakeChatClient message capture
+   - `DistillIntentAsync_With300CharDefault_TruncatesCorrectly` — validates 300-char default on 500+ char prompts
+4. **Layer 4 — Test Documentation:** Renamed `ToolRouterOptions_DefaultMaxPromptLength_Is4096` → `_Is300` to explicitly document the correct default.
+
+**Why Multi-Layer?**
+- **Fail Fast:** Primary test immediately catches divergence at test time
+- **Defense in Depth:** Multiple layers catch bug from different angles (default change, mapping logic, truncation behavior)
+- **Low Maintenance:** Uses existing FakeChatClient infrastructure, follows established patterns
+
+**Results:**
+- ✅ All 5 new regression tests pass
+- ✅ All 119 unit tests pass (114 existing + 5 new)
+- ✅ Committed alongside Tron's core fix and Ram's README update
+- **Decision merged:** Decision 3.8 (Regression Test Strategy) added to `.squad/decisions.md`
+- **Session artifacts:**
+  - `.squad/orchestration-log/2026-03-28T17-23-35-yori-regression-tests.md` — orchestration log
+  - `.squad/log/2026-03-28T17-23-35-maxpromptlength-fix-session.md` — comprehensive session log

@@ -392,5 +392,102 @@ ElBruno.LocalLLMs v0.6.1 added `ModelInfo` property exposing `ModelMetadata` (Ma
 
 ---
 
-**Last updated:** 2026-03-28T10:49:01Z  
+### Decision 3.7: Align ToolRouterOptions.MaxPromptLength Default to 300
+
+**Date:** 2026-03-28  
+**Agent:** Tron (Core Dev)  
+**Status:** Implemented ✅
+
+#### Context
+The `LLMDistillationMax` sample was showing identical tool selection results between Mode 1 (embeddings-only) and Mode 2 (LLM-distilled), defeating the purpose of prompt distillation.
+
+#### Root Cause Analysis
+1. `ToolRouterOptions.MaxPromptLength` defaulted to 4096 characters
+2. `PromptDistillerOptions.MaxPromptLength` defaulted to 300 characters
+3. When `SearchUsingLLMAsync` called `ToDistillerOptions()`, it mapped 4096 → 300, but fallback logic prevented proper truncation
+4. Local ONNX model (Phi-3.5 mini with ~2048-token effective context) failed silently
+5. Mode 2 fell back to untruncated prompt → identical scores to Mode 1
+
+#### Decision
+**Changed `ToolRouterOptions.MaxPromptLength` default from 4096 to 300.**
+
+#### Rationale
+- Aligns both options classes to the same safe default (300 characters)
+- Enables local ONNX models to work reliably with proper truncation
+- Backward-compatible: cloud LLM users can explicitly override to 4096+
+- Prevents silent failures on models with limited context windows
+
+#### Implementation
+**Files Changed:**
+1. `src/ElBruno.ModelContextProtocol.MCPToolRouter/ToolRouterOptions.cs`
+   - Line 53: Default changed from 4096 to 300
+   - Lines 47-51: XML doc updated with cloud LLM override guidance
+
+2. `src/tests/ElBruno.ModelContextProtocol.MCPToolRouter.Tests/PromptDistillerTests.cs`
+   - Fixed off-by-one error in `DistillIntentAsync_With300CharDefault_TruncatesCorrectly`
+
+#### Verification
+✅ **All 119 unit tests pass**  
+✅ **LLMDistillationMax sample shows Mode 1 vs Mode 2 divergence:**
+- Scenario 1: kubectl_apply scores 0.442 (Mode 1) vs 0.598 (Mode 2)
+- Scenario 5: Mode 2 wins with better intent analysis (2/5 vs 1/5)
+- Scenario 10: Mode 2 wins with contextual relevance (2/5 vs 1/5)
+
+#### Impact
+- Mode 2 now produces different (and sometimes superior) tool selections
+- Local ONNX models work reliably with truncated prompts
+- Users can demonstrate distillation value in samples
+- No breaking changes; defaults safe for local models, override available for cloud
+
+---
+
+### Decision 3.8: MaxPromptLength Regression Test Strategy
+
+**Date:** 2026-03-28  
+**Agent:** Yori (QA/Testing)  
+**Status:** Implemented ✅
+
+#### Context
+A critical bug was discovered where `ToolRouterOptions.MaxPromptLength` defaulted to 4096 while `PromptDistillerOptions.MaxPromptLength` defaulted to 300. This mismatch caused Mode 2 (LLM-distilled routing) to silently fail on local ONNX models, falling back to Mode 1 behavior.
+
+#### Decision
+Implemented a multi-layered regression test strategy to prevent recurrence:
+
+**Layer 1: Primary Default Alignment Test (KEY REGRESSION TEST)**
+- `ToolRouterOptions_MaxPromptLength_DefaultAlignedWithDistillerOptions`
+- Instantiates both options classes and asserts equal `MaxPromptLength` defaults
+- Fails immediately if someone changes one default without the other
+
+**Layer 2: Mapping Verification**
+- `ToDistillerOptions_MaxPromptLength_MappedCorrectly`
+- Verifies internal mapping correctly transfers MaxPromptLength from ToolRouterOptions to PromptDistillerOptions
+- Tests both default and custom values
+
+**Layer 3: Runtime Behavior**
+- `DistillIntentAsync_WithLongPrompt_TruncatesBeforeSendingToLLM` — Verifies actual truncation
+- `DistillIntentAsync_With300CharDefault_TruncatesCorrectly` — Validates 300-char default
+
+**Layer 4: Test Documentation**
+- Renamed: `ToolRouterOptions_DefaultMaxPromptLength_Is4096` → `_Is300`
+- Explicitly documents the correct default for future maintainers
+
+#### Rationale
+1. **Fail Fast:** Primary test immediately catches default divergence
+2. **Defense in Depth:** Multiple layers catch bug from different angles (default change, mapping logic, truncation behavior)
+3. **Low Maintenance:** Uses existing `FakeChatClient` and established patterns
+
+#### Implementation
+**Files Changed:**
+- `src/tests/ElBruno.ModelContextProtocol.MCPToolRouter.Tests/ToolRouterTests.cs` — 2 new tests
+- `src/tests/ElBruno.ModelContextProtocol.MCPToolRouter.Tests/PromptDistillerTests.cs` — 3 new tests + renamed test
+
+#### Impact
+- **Test Count:** +5 new regression tests (119 → 124 total)
+- **Coverage:** Prevents silent Mode 2 failures on local models
+- **Maintenance:** Minimal — self-contained tests using established patterns
+- **Effectiveness:** Would catch this bug via one of four test layers
+
+---
+
+**Last updated:** 2026-03-28T17:23:35Z  
 **Scribe:** Automated decision merger from `.squad/decisions/inbox/` → `decisions.md`

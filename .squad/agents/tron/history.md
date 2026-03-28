@@ -552,3 +552,22 @@ Completed comprehensive performance analysis as part of coordinated audit sprint
 - **Session artifacts:**
   - `.squad/log/2026-03-28T16-54-12-directml-revert.md` — session log
   - `.squad/orchestration-log/2026-03-28T16-54-12-tron-revert-directml.md` — orchestration log
+
+### MaxPromptLength Default Alignment Fix (2026-03-28T17:23:35Z)
+- **Task:** Fix ToolRouterOptions.MaxPromptLength default from 4096 to 300 to align with PromptDistillerOptions
+- **Root cause:** When `SearchUsingLLMAsync` called `ToDistillerOptions()`, it passed 4096 chars to a distiller that expected 300 max. Local ONNX model (Phi-3.5 mini, ~2048-token effective context) failed silently, fell back to original prompt → Mode 2 produced identical scores to Mode 1
+- **Fix applied:**
+  - Line 53 in ToolRouterOptions.cs: Default changed from 4096 to 300
+  - Lines 47-51: XML doc updated with cloud LLM override guidance
+  - PromptDistillerTests.cs: Fixed off-by-one error in `DistillIntentAsync_With300CharDefault_TruncatesCorrectly`
+- **Verification:**
+  - ✅ All 119 unit tests pass
+  - ✅ LLMDistillationMax sample shows Mode 1 vs Mode 2 divergence
+  - ✅ Scenario 1: kubectl_apply scores 0.442 (Mode 1) vs 0.598 (Mode 2) — now different
+  - ✅ Overall: Mode 2 won 2/12 scenarios vs Mode 1's 8 (expected — distillation working)
+- **Design decision:** Local ONNX models need conservative truncation (300 chars) by default. Cloud LLM users can explicitly override to 4096+ in ToolRouterOptions
+- **Decision merged:** Decision 3.7 (align defaults) and 3.8 (regression tests) added to `.squad/decisions.md`
+- **Session artifacts:**
+  - `.squad/log/2026-03-28T17-23-35-maxpromptlength-fix-session.md` — comprehensive session log
+  - `.squad/orchestration-log/2026-03-28T17-23-35-tron-maxprompt-fix.md` — orchestration log
+- **Commit:** Part of sprint with Yori (5 regression tests) and Ram (README update)

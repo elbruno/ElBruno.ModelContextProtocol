@@ -129,3 +129,30 @@ ew ToolRouterOptions { MaxPromptLength = 2000 }\
   - Clarified that Mode 2 now properly distills with smaller context constraints, distinguishing it from Mode 1
   - Verified LLMDistillationDemo and LLMDistillationMax sample READMEs — no MaxPromptLength mentions, no updates required
 - **Testing:** Solution builds clean, documentation is now accurate and reflects the fix
+
+### MaxPromptLength Default Alignment Documentation (2026-03-28T17:23:35Z)
+**Task:** Update README.md with MaxPromptLength=300 default and cloud LLM override guidance following Tron's fix.
+
+**Changes Made:**
+- **Input Validation Section:** Updated to explicitly state MaxPromptLength defaults to 300 (aligned across ToolRouterOptions and PromptDistillerOptions)
+- **Cloud LLM Override Guidance:** Added clear example showing how to increase MaxPromptLength for Azure OpenAI or other cloud LLMs with larger context windows:
+  ```csharp
+  var options = new ToolRouterOptions { MaxPromptLength = 4096 };
+  var tools = await ToolRouter.SearchUsingLLMAsync(prompt, tools, options, chatClient);
+  ```
+- **Context Window Explanation:** Documented the rationale: 300 chars is safe for local ONNX models with limited context, cloud LLMs can handle 4096+ safely
+- **Sample Documentation:** Verified all sample READMEs — none mention MaxPromptLength specifically, no changes needed to samples
+
+**Related Work:**
+- Tron: Fixed `ToolRouterOptions.MaxPromptLength` default from 4096 to 300 (core fix)
+- Yori: Added 5 regression tests to prevent recurrence
+- Commit: Part of coordinated MaxPromptLength fix sprint
+
+**Results:**
+- ✅ README.md updated with correct defaults and override pattern
+- ✅ Clear guidance for both local ONNX and cloud LLM scenarios
+- ✅ Solution builds clean, no warnings
+- **Decision merged:** Decision 3.7 (Align defaults) and 3.8 (Regression tests) added to `.squad/decisions.md`
+- **Session artifacts:**
+  - `.squad/orchestration-log/2026-03-28T17-23-35-ram-readme-update.md` — orchestration log
+  - `.squad/log/2026-03-28T17-23-35-maxpromptlength-fix-session.md` — comprehensive session log (shared with Tron, Yori)

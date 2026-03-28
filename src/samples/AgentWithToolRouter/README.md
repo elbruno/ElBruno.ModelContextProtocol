@@ -16,7 +16,7 @@ Demonstrates using **MCPToolRouter** with the [Microsoft Agent Framework](https:
 ## Prerequisites
 
 - .NET 10.0 SDK
-- Azure OpenAI resource with a deployed model (e.g., `gpt-4o`)
+- Azure OpenAI resource with a deployed model (e.g., `gpt-5-mini`)
 - Azure credentials (API key or Azure Identity)
 
 ## Setup
@@ -26,7 +26,7 @@ cd src/samples/AgentWithToolRouter
 
 # Required
 dotnet user-secrets set "AzureOpenAI:Endpoint" "https://your-resource.openai.azure.com/"
-dotnet user-secrets set "AzureOpenAI:DeploymentName" "gpt-4o"
+dotnet user-secrets set "AzureOpenAI:DeploymentName" "gpt-5-mini"
 
 # Optional — omit to use DefaultAzureCredential (az login)
 dotnet user-secrets set "AzureOpenAI:ApiKey" "your-api-key"

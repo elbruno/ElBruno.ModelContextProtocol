@@ -29,7 +29,7 @@ if (string.IsNullOrEmpty(endpoint) || string.IsNullOrEmpty(deploymentName))
     Console.WriteLine("   cd src/samples/AgentWithToolRouter");
     Console.WriteLine("   dotnet user-secrets set \"AzureOpenAI:Endpoint\" \"https://your-resource.openai.azure.com/\"");
     Console.WriteLine("   dotnet user-secrets set \"AzureOpenAI:ApiKey\" \"your-api-key\"       # optional — omit to use DefaultAzureCredential");
-    Console.WriteLine("   dotnet user-secrets set \"AzureOpenAI:DeploymentName\" \"gpt-4o\"\n");
+    Console.WriteLine("   dotnet user-secrets set \"AzureOpenAI:DeploymentName\" \"gpt-5-mini\"\n");
     return;
 }
 

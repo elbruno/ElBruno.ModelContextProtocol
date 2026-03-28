@@ -23,7 +23,7 @@ if (string.IsNullOrEmpty(endpoint) || string.IsNullOrEmpty(apiKey) || string.IsN
     AnsiConsole.MarkupLine("  cd src/samples/TokenComparisonMax");
     AnsiConsole.MarkupLine("  dotnet user-secrets set \"AzureOpenAI:Endpoint\" \"https://your-resource.openai.azure.com/\"");
     AnsiConsole.MarkupLine("  dotnet user-secrets set \"AzureOpenAI:ApiKey\" \"your-api-key\"");
-    AnsiConsole.MarkupLine("  dotnet user-secrets set \"AzureOpenAI:DeploymentName\" \"gpt-4o-mini\"");
+    AnsiConsole.MarkupLine("  dotnet user-secrets set \"AzureOpenAI:DeploymentName\" \"gpt-5-mini\"");
     return;
 }
 

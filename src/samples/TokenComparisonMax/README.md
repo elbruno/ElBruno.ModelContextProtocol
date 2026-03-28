@@ -14,7 +14,7 @@ This sample showcases how **MCPToolRouter** scales to real-world scenarios where
 ## Prerequisites
 
 - .NET 8.0 SDK or later
-- An Azure OpenAI deployment (e.g., `gpt-4o-mini`)
+- An Azure OpenAI deployment (e.g., `gpt-5-mini`)
 
 ## Setup
 
@@ -23,7 +23,7 @@ cd src/samples/TokenComparisonMax
 
 dotnet user-secrets set "AzureOpenAI:Endpoint" "https://your-resource.openai.azure.com/"
 dotnet user-secrets set "AzureOpenAI:ApiKey" "your-api-key"
-dotnet user-secrets set "AzureOpenAI:DeploymentName" "gpt-4o-mini"
+dotnet user-secrets set "AzureOpenAI:DeploymentName" "gpt-5-mini"
 ```
 
 ## Run

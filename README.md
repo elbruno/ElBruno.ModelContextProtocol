@@ -414,13 +414,13 @@ Some samples require Azure OpenAI credentials (TokenComparison, TokenComparisonM
 ```bash
 dotnet user-secrets set "AzureOpenAI:Endpoint" "https://your-resource.openai.azure.com/" --id elbruno-mcp-samples
 dotnet user-secrets set "AzureOpenAI:ApiKey" "your-api-key" --id elbruno-mcp-samples
-dotnet user-secrets set "AzureOpenAI:DeploymentName" "gpt-4o-mini" --id elbruno-mcp-samples
+dotnet user-secrets set "AzureOpenAI:DeploymentName" "gpt-5-mini" --id elbruno-mcp-samples
 ```
 
 Replace:
 - `your-resource` with your Azure OpenAI resource name
 - `your-api-key` with your API key
-- `gpt-4o-mini` with your deployed model name
+- `gpt-5-mini` with your deployed model name
 
 > **Note:** Do NOT run `dotnet user-secrets init` — the shared UserSecretsId is already configured in each sample's project file.
 

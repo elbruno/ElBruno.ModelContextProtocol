@@ -58,3 +58,13 @@
   - Both sections are concise (3–4 paragraphs each) with practical code examples matching existing README tone
   - LLMDistillationDemo already listed in samples table (no changes needed)
   - Solution builds successfully in Release mode (no regressions)
+- Created LLMDistillationMax sample (`src/samples/LLMDistillationMax/`) — Mode 2 at TokenComparisonMax scale
+  - 120+ tools across 12 domains (same as TokenComparisonMax for direct comparison)
+  - 12 paragraph-length scenarios (100–200+ words each): stream-of-consciousness, multi-intent, noisy real-world prompts
+  - Uses static one-liner API: `ToolRouter.SearchAsync()` (Mode 1) and `ToolRouter.SearchUsingLLMAsync()` (Mode 2)
+  - Spectre.Console rich UX: FigletText banner, per-scenario comparison tables (side-by-side Mode 1 vs Mode 2), final summary table, overall scoreboard with win/loss/tie stats and hit rate
+  - No Azure required — runs 100% locally with auto-downloaded LLM and embedding model
+  - Shows distilled prompt for each scenario via `PromptDistiller.DistillIntentAsync`
+  - Cleans up shared resources via `ToolRouter.ResetSharedResourcesAsync()` at exit
+  - Added to solution file, README samples table (9 samples now), and wrote sample README.md
+  - Full solution builds clean: 0 warnings, 0 errors

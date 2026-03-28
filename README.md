@@ -355,13 +355,14 @@ Build reproducibility is ensured via **NuGet lock files** (`.csproj` with `Resto
 
 ## Samples
 
-Eight sample applications showcase different use cases for MCPToolRouter:
+Nine sample applications showcase different use cases for MCPToolRouter:
 
 | Sample | Description | Azure Required |
 |--------|-------------|:-:|
 | [BasicUsage](src/samples/BasicUsage/) | Getting started — index tools and search | ❌ |
 | [McpToolRouting](src/samples/McpToolRouting/) | Local LLM distillation for complex prompt routing | ❌ |
 | [LLMDistillationDemo](src/samples/LLMDistillationDemo/) | Mode 1 vs Mode 2 comparison with verbose prompts | ❌ |
+| [LLMDistillationMax](src/samples/LLMDistillationMax/) | Mode 2 at scale — 120+ tools, 12 paragraph-length prompts, Spectre.Console UX | ❌ |
 | [TokenComparison](src/samples/TokenComparison/) | Compare token usage: all tools vs. routed | ✅ |
 | [TokenComparisonMax](src/samples/TokenComparisonMax/) | Extreme 120+ tools scenario with rich Spectre.Console UX | ✅ |
 | [FilteredFunctionCalling](src/samples/FilteredFunctionCalling/) | End-to-end function calling with filtered tools | ✅ |
@@ -379,6 +380,10 @@ Demonstrates local LLM-powered tool routing with prompt distillation. 28 realist
 ### LLMDistillationDemo
 
 Head-to-head comparison of Mode 1 (embeddings-only) vs Mode 2 (LLM-distilled) across 7 scenarios with long, verbose, conversational prompts. Shows why Mode 2 exists — when users ramble, LLM distillation extracts core intent for better tool selection. No Azure required.
+
+### LLMDistillationMax
+
+Scale-up of LLMDistillationDemo: **120+ tools** across 12 domains, **12 paragraph-length prompts** (100–200 words each), rich Spectre.Console tables, and a final scoreboard comparing Mode 1 vs Mode 2 accuracy. Uses the static one-liner API (`ToolRouter.SearchAsync` / `ToolRouter.SearchUsingLLMAsync`). No Azure required.
 
 ### TokenComparison
 

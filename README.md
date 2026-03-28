@@ -446,9 +446,10 @@ This project is licensed under the MIT License — see [LICENSE](LICENSE) for de
 **Bruno Capuano** (ElBruno)
 
 - 💻 Blog: https://elbruno.com
-- 📺 YouTube: https://youtube.com/@inthelabs
-- 💼 LinkedIn: https://linkedin.com/in/inthelabs
-- 🐦 Twitter: https://twitter.com/inthelabs
+- 📺 YouTube: https://youtube.com/elbruno
+- 💼 LinkedIn: https://linkedin.com/in/elbruno
+- 🐦 Twitter: https://twitter.com/elbruno
+- 🎙️ Podcast: https://notienenombre.com
 - 🎙️ Podcast: https://inthelabs.dev
 
 ## Acknowledgments

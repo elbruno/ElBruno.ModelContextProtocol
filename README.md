@@ -409,20 +409,22 @@ Comprehensive validation with 52 real tool implementations across 8 domains (mat
 
 ## Azure OpenAI Setup
 
-For samples requiring Azure OpenAI (TokenComparison, TokenComparisonMax, FilteredFunctionCalling, AgentWithToolRouter, FunctionalToolsValidation), configure credentials using user secrets:
+For samples requiring Azure OpenAI (TokenComparison, TokenComparisonMax, FilteredFunctionCalling, AgentWithToolRouter, FunctionalToolsValidation), configure credentials using user secrets. All Azure-dependent samples share the same UserSecretsId (`elbruno-mcp-samples`), so configure once and reuse:
 
 ```bash
 cd src/samples/{SampleName}
 dotnet user-secrets init
 dotnet user-secrets set "AzureOpenAI:Endpoint" "https://your-resource.openai.azure.com/"
 dotnet user-secrets set "AzureOpenAI:ApiKey" "your-api-key"
-dotnet user-secrets set "AzureOpenAI:DeploymentName" "gpt-5-mini"
+dotnet user-secrets set "AzureOpenAI:DeploymentName" "gpt-4o-mini"
 ```
 
 Replace:
 - `your-resource` with your Azure OpenAI resource name
 - `your-api-key` with your API key  
-- Deployment name with your model (e.g., `gpt-5-mini`)
+- `gpt-4o-mini` with your deployed model name
+
+Once initialized in one sample directory, all samples with the same UserSecretsId can access these credentials.
 
 See each sample's folder for additional setup details.
 

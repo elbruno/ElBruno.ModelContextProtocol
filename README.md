@@ -53,13 +53,15 @@ MCPToolRouter supports **two distinct modes** for finding the right tools. Choos
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
-│  Mode 2: LLM-Assisted Routing (Precise, Complex)                │
+│  Mode 2: Hybrid Search (Precise, Complex)                        │
 │                                                                  │
-│  User Prompt ──► LLM Distill ──► Embed ──► Cosine ──► Top-K    │
+│  User Prompt ──┬──► Embed (baseline) ────────────────┐           │
+│                └──► LLM Distill ──► Split Phrases ──►├─► Merge   │
+│                     ──► Embed Each ──────────────────┘  ──► TopK │
 │                                                                  │
 │  "Hey, I was thinking about my trip and need to know if it's    │
-│   going to rain in Tokyo..." → "Check weather in Tokyo"         │
-│   → [0.91 get_weather, 0.52 get_forecast]                      │
+│   going to rain in Tokyo..." → "check weather Tokyo,            │
+│   set reminder" → search each + merge with baseline             │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -113,11 +115,11 @@ var results = await index.SearchAsync("What's the temperature outside?", topK: 3
 
 ---
 
-### Mode 2: LLM-Assisted Routing (Local Distillation) — One-Liner
+### Mode 2: Hybrid Search (LLM + Multi-Query) — One-Liner
 
 **Use when:** Your prompt is verbose, multi-part, or conversational.
 
-**What it does:** Uses a small local LLM (e.g., Qwen 2.5 0.5B) to distill the prompt to a single sentence, then runs the same embedding search. The LLM extracts the core intent, improving accuracy.
+**What it does:** Uses a small local LLM (e.g., Qwen 2.5 0.5B) to distill the prompt into comma-separated action phrases, then runs a hybrid search: the original prompt is searched as a baseline, each extracted phrase is searched individually, and results are merged. Baseline tools keep full scores; phrase-only tools get an 85% discount. This means Mode 2 can only **improve** over Mode 1, never degrade.
 
 **Speed:** ~50–200ms (LLM inference + embedding) — faster on GPU  
 **Dependencies:** Local embeddings (~90MB) + local LLM (~1GB, auto-downloaded)
@@ -143,8 +145,8 @@ var results = await ToolRouter.SearchUsingLLMAsync(
     "if it's going to rain in Tokyo. Also remind me to call the dentist.",
     tools, topK: 5);
 
-// The LLM distills this to something like: "Check weather in Tokyo, set reminder"
-// Then embeddings find the best matching tools
+// The LLM distills this to action phrases: "check weather Tokyo, set reminder call dentist"
+// Then each phrase + the original prompt are searched and results merged
 foreach (var r in results)
     Console.WriteLine($"  {r.Tool.Name}: {r.Score:F3}");
 // Output:
@@ -203,7 +205,7 @@ The samples default to the **CPU-only** ONNX runtime (`Microsoft.ML.OnnxRuntimeG
 
 ### When to Use Which Mode
 
-| | **Mode 1: Embeddings** | **Mode 2: LLM-Assisted** |
+| | **Mode 1: Embeddings** | **Mode 2: Hybrid Search** |
 |---|---|---|
 | **Best for** | Clear, single-intent prompts | Verbose, multi-part, conversational prompts |
 | **Speed** | ~1–5ms per query | ~50–200ms on CPU (~20–100ms with GPU) |
@@ -211,7 +213,7 @@ The samples default to the **CPU-only** ONNX runtime (`Microsoft.ML.OnnxRuntimeG
 | **Static API** | `ToolRouter.SearchAsync()` | `ToolRouter.SearchUsingLLMAsync()` |
 | **Instance API** | `ToolIndex.CreateAsync()` + `SearchAsync()` | `ToolRouter.CreateAsync()` + `RouteAsync()` |
 | **Example prompt** | "Send an email" | "I need to email Alice about the deadline and check the weather" |
-| **Accuracy** | High for clear intents | Higher for ambiguous/complex intents |
+| **Accuracy** | High for clear intents | Higher for ambiguous/complex intents (never worse than Mode 1) |
 
 ---
 
@@ -245,7 +247,7 @@ var response = await chatClient.CompleteChatAsync([new UserChatMessage(userPromp
 
 **Core mechanism:** MCPToolRouter embeds tool descriptions and user prompts into a vector space, then finds the top-K tools via cosine similarity — all using local embeddings (ONNX, no external APIs).
 
-**Two-stage pipeline for Mode 2:** When using LLM distillation, the local LLM first condenses verbose prompts into a single intent sentence, then embeddings search finds matching tools — this hybrid approach maximizes accuracy for complex scenarios.
+**Hybrid pipeline for Mode 2:** When using LLM distillation, the local LLM extracts comma-separated action phrases from verbose prompts. The original prompt is searched as a baseline (Mode 1), then each extracted phrase is searched individually. Results are merged: baseline tools keep full scores, phrase-only tools get an 85% discount. Post-processing automatically cleans up trailing word repetitions and duplicate phrases (common with small local LLMs). This hybrid approach guarantees Mode 2 can only improve over Mode 1.
 
 **Token savings:** By routing prompts to only the relevant tools before sending to external LLMs, you can reduce token usage by 70–85% while maintaining accuracy.
 
@@ -346,7 +348,7 @@ The cache is automatically cleared when tools are added or removed.
 |----------|----------------|-----|
 | CLI tool, one-off query | `ToolRouter.SearchAsync()` | Simplest, shared resources handle perf |
 | Server/agent, many queries | `ToolRouter.CreateAsync()` + `RouteAsync()` | Full control, best performance |
-| Verbose or complex prompts | `ToolRouter.SearchUsingLLMAsync()` | LLM distills intent first |
+| Verbose or complex prompts | `ToolRouter.SearchUsingLLMAsync()` | Hybrid search: LLM distills + multi-query merge |
 
 ---
 
@@ -371,7 +373,16 @@ Models are downloaded over HTTPS and verified. Pin specific model versions if re
 
 ### Input Validation
 
-`ToolIndex.LoadAsync()` validates all numeric bounds. The default `MaxPromptLength` is 300 characters for both `PromptDistillerOptions` and `ToolRouterOptions` (optimized for local ONNX models with small context windows). If targeting cloud LLMs like Azure OpenAI or Ollama, increase this value:
+`ToolIndex.LoadAsync()` validates all numeric bounds. Default distillation settings:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `MaxPromptLength` | 500 | Max input characters (truncated if exceeded) |
+| `DistillationMaxOutputTokens` | 384 | Max tokens for LLM distillation output |
+| `DistillationTemperature` | 0.1 | LLM sampling temperature |
+| `SystemPrompt` | *(see below)* | Extracts comma-separated action phrases |
+
+The default system prompt instructs the LLM to extract key tasks as comma-separated action phrases (2–5 words each) optimized for embedding cosine similarity. If targeting cloud LLMs like Azure OpenAI or Ollama, increase `MaxPromptLength`:
 
 ```csharp
 var options = new ToolRouterOptions { MaxPromptLength = 2000 };

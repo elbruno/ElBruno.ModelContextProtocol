@@ -63,3 +63,40 @@ Completed comprehensive security audit as part of coordinated audit sprint with 
 **Audit of other workflows:** Reviewed all 8 workflow files in `.github/workflows/`. The other 7 workflows use `actions/github-script@v7` (JavaScript context) or have `${{ }}` only in YAML parameter positions (`with:`, `github-token:`, `if:`). No additional shell injection vectors found.
 
 **Decision:** `.squad/decisions/inbox/sark-publish-injection-fix.md`
+
+### 2025-07-25 — Added Bounds Checking to LoadAsync (Phase 2, Item 2.3)
+
+**Scope:** `src/ElBruno.ModelContextProtocol.MCPToolRouter/ToolIndex.cs` — `LoadAsync` method.
+
+**Problem:** `LoadAsync` reads `toolCount`, `embeddingDim`, and `vectorLength` from untrusted binary data with no upper bounds. A malicious `.bin` file could specify extreme values (e.g., `toolCount = 2_000_000_000`), causing OOM via `new List<Tool>(toolCount)` or `new float[vectorLength]`.
+
+**Changes made (3 validations added):**
+
+1. **Constants:** Added `MaxToolCount = 100_000` and `MaxEmbeddingDimension = 8192` as upper bounds.
+2. **toolCount validation:** After reading, reject values outside `[0, 100_000]` with `InvalidDataException`.
+3. **embeddingDim validation:** After reading, reject values outside `[0, 8192]` with `InvalidDataException`.
+4. **vectorLength consistency check:** Inside the loop, each vector's declared dimension must match `embeddingDim`. This prevents per-vector OOM attacks and also catches corrupted data.
+
+**Test results:** All 76 existing tests pass (including Save/Load round-trip tests), confirming the bounds are compatible with real-world usage.
+
+**Decision:** `.squad/decisions/inbox/sark-loadasync-bounds.md`
+
+### 2025-07-25 — Phase 3 Security Hardening (Items 3.1, 3.2, 3.3)
+
+**Scope:** Supply-chain hardening and path traversal defense across CI/CD and library code.
+
+**Changes made (3 items):**
+
+1. **NuGet lock files (Item 3.1):** Added `<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>` to `Directory.Build.props`. Generated and committed 10 `packages.lock.json` files. Updated `dotnet restore` steps in both `build.yml` and `publish.yml` to use `--locked-mode`, preventing silent dependency substitution in CI.
+
+2. **SHA-pinned GitHub Actions (Item 3.2):** Replaced all mutable tag references in `build.yml` and `publish.yml` with full commit SHAs plus tag comments:
+   - `actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2`
+   - `actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1`
+   - `actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2`
+   - `NuGet/login@d22cc5f58ff5b88bf9bd452535b4335137e24544 # v1`
+
+3. **Path traversal guard (Item 3.3):** Added validation in `EmbeddingModelInfo.ResolveModelDirectory` to reject model names containing `..` or absolute paths (`Path.IsPathRooted`). Throws `ArgumentException` before any `Path.Combine` call.
+
+**Test results:** All 85 tests pass. Build succeeds on Release configuration.
+
+**Decision:** `.squad/decisions/inbox/sark-phase3-hardening.md`

@@ -428,3 +428,28 @@ Completed comprehensive performance analysis as part of coordinated audit sprint
 
 **Decision merged to:** `.squad/decisions.md` (Decision §9 — 5-Phase Implementation Roadmap)
 **Orchestration logged to:** `.squad/orchestration-log/2026-03-28T02-55-sark-security-audit.md`
+
+### P0 Fixes — Phase 1 (completed)
+- **QueryCacheSize LRU Cache:** Implemented FIFO-eviction query embedding cache in `ToolIndex.SearchAsync`. Uses `ConcurrentDictionary<string, float[]>` + `ConcurrentQueue<string>` for insertion-order tracking. Cache is cleared on `AddToolsAsync` and `RemoveTools` to avoid stale results. Added `LoggerMessage` at Debug level for cache hit/miss.
+- **DisposeAsync Race Condition:** Changed `_disposed` from `bool` to `int` in both `ToolIndex` and `ToolRouter`, using `Interlocked.Exchange` for atomic check-and-set. Eliminates double-dispose under concurrent calls.
+- Build: 0 warnings, 0 errors (net8.0 + net10.0)
+- Tests: 67/67 passed on net8.0
+### Phase 2 — Shared Singletons for Static API Performance (completed)
+- **Shared Embedding Generator (Item 2.1):** Added process-level singleton for the ONNX embedding generator used by static API methods (SearchAsync, SearchUsingLLMAsync). Uses double-checked locking with SemaphoreSlim. The shared generator is passed to ToolIndex.CreateAsync with ownsGenerator: false, so per-call index disposal never destroys the shared session. Eliminates ~300-700ms ONNX session creation overhead on repeated static API calls.
+- **Shared LocalChatClient (Item 2.2):** Same pattern for the zero-setup SearchUsingLLMAsync overload. Shared IChatClient singleton eliminates ~1-3.5s LocalChatClient.CreateAsync overhead on repeated calls.
+- **ResetSharedResourcesAsync:** Public static cleanup method that disposes both shared singletons. Documented for app shutdown / test cleanup use only (not safe to call during in-flight searches).
+- **UseSharedResources option:** Added ToolRouterOptions.UseSharedResources (default: 	rue). When alse, static methods fall back to per-call resource creation for isolation.
+- **ToolIndex.CreateDefaultGeneratorAsync:** Changed from private to internal so ToolRouter can reuse the generator creation logic without duplication.
+- Build: 0 warnings, 0 errors (net8.0 + net10.0)
+- Tests: 76/76 passed on net8.0
+
+### Prompt Length Limit (Phase 3.4)
+- **Task:** Added MaxPromptLength guard to PromptDistiller to prevent oversized prompts from reaching the LLM
+- **PromptDistillerOptions.MaxPromptLength:** New property (default 4096). Set to 0 or negative to disable truncation.
+- **PromptDistiller.DistillIntentAsync:** Added overload accepting ILogger; truncates userPrompt before LLM call when it exceeds MaxPromptLength
+- **LoggerMessage:** EventId 200, LogLevel.Warning — logs original vs. truncated length
+- **ToolRouterOptions:** Added MaxPromptLength property, wired through ToDistillerOptions()
+- **ToolRouter:** Now passes _logger to DistillIntentAsync for truncation visibility
+- **Backward compatible:** Original 4-param overload delegates to new 5-param overload with NullLogger
+- Build: 0 warnings, 0 errors (Release, net8.0 + net10.0)
+- Tests: 85/85 passed on net8.0

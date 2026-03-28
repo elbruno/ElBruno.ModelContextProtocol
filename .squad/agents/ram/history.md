@@ -44,3 +44,17 @@
   - Consolidated Azure OpenAI setup from 5 repeated blocks into single unified section that applies to all requiring-Azure samples
   - Result: README reduced by 112 lines (137 deletions, 25 insertions) while maintaining all valuable information
   - Kept unchanged: Mode 1/2 code examples, pipeline diagrams, comparison table, Advanced Features, Building from Source, License, Author, Acknowledgments sections
+- Created LLMDistillationDemo sample (`src/samples/LLMDistillationDemo/`) showcasing Mode 1 vs Mode 2 comparison
+  - 30 tools across 8 domains (Weather, Email, Calendar, Files, Web, Math/Data, Code, DevOps)
+  - 7 verbose real-world prompt scenarios: trip planning, kitchen-sink email, developer stream-of-consciousness, vague meeting, research ramble, multi-domain chaos, procrastinator's todo list
+  - Uses shared `ToolIndex` + `LocalChatClient` instances across all scenarios for performance
+  - Calls `PromptDistiller.DistillIntentAsync` directly to display the distilled intent before searching
+  - Mode 1 searches with raw verbose prompt; Mode 2 searches with LLM-distilled intent — same embedding index, different query quality
+  - Console.WriteLine output only (no Spectre.Console), simple and clean formatting
+  - Added to solution file, README samples table (8 samples now), and wrote sample README.md explaining the problem, scenarios, and API usage
+- Added two new sections to README before "Samples":
+  - ⚡ **Performance Guide** (lines 291–325): Explains Static vs Instance API trade-offs, highlights new shared singletons behavior for static API (much faster than before), describes QueryCacheSize for embedding caching, quick recommendation table for common scenarios
+  - 🔒 **Security Considerations** (lines 327–353): Covers prompt injection risks in Mode 2, model download security with EmbeddingModelCacheDirectory option, input validation with MaxPromptLength, and NuGet lock file supply chain integrity
+  - Both sections are concise (3–4 paragraphs each) with practical code examples matching existing README tone
+  - LLMDistillationDemo already listed in samples table (no changes needed)
+  - Solution builds successfully in Release mode (no regressions)

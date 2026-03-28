@@ -320,6 +320,36 @@ Added a zero-setup `SearchUsingLLMAsync` overload that internally creates a `Loc
 
 1. **ElBruno.LocalLLMs 0.5.0** added to library csproj as a package dependency
    - `Microsoft.Extensions.AI.Abstractions` bumped from 10.3.0 → 10.4.0 (required by LocalLLMs 0.5.0)
+
+### MaxPromptLength Default Fix (2025-03-28)
+Fixed critical bug where `ToolRouterOptions.MaxPromptLength` and `PromptDistillerOptions.MaxPromptLength` had mismatched defaults (4096 vs 300), causing Mode 2 (LLM-distilled) to produce identical results to Mode 1 (embeddings-only).
+
+**Root Cause:**
+- `ToolRouterOptions.MaxPromptLength` defaulted to 4096 (line 52 of ToolRouterOptions.cs)
+- `PromptDistillerOptions.MaxPromptLength` defaulted to 300
+- When `SearchUsingLLMAsync` called `ToDistillerOptions()`, it created a PromptDistillerOptions with MaxPromptLength=4096
+- Local ONNX model (Phi-3.5 mini, effective context ~2048 tokens) received prompts too large for its context window
+- Silent fallback to original prompt → Mode 2 searched with identical text as Mode 1 → identical scores
+
+**Fix Applied:**
+1. Changed `ToolRouterOptions.MaxPromptLength` default from 4096 to 300 (line 53)
+2. Updated XML doc comment (lines 47-51) to explain:
+   - Default is 300 (suitable for local ONNX models)
+   - Users can increase for cloud LLMs with larger context windows (e.g., 4096+)
+3. Fixed off-by-one error in `PromptDistillerTests.cs` test `DistillIntentAsync_With300CharDefault_TruncatesCorrectly`:
+   - Base string "Tell me about the weather forecast for the next seven days in these cities: " is 76 chars
+   - Changed `new string('x', 473)` to `new string('x', 474)` to get exactly 550 total chars
+
+**Verification:**
+- ✅ All 119 unit tests pass
+- ✅ `LLMDistillationMax` sample now shows DIFFERENT tool selections and scores between Mode 1 and Mode 2
+- ✅ Example from sample: Scenario 1 "Infrastructure Chaos" — Mode 1: kubectl_apply (0.442), Mode 2: kubectl_apply (0.598) — scores now diverge
+- ✅ Overall Mode 2 won 2/12 scenarios vs Mode 1's 8 (expected behavior — Mode 2 is doing real distillation)
+
+**Key Learning:**
+- When using local ONNX models with limited context windows, prompt truncation BEFORE sending to LLM is critical
+- Silent failures in LLM processing can cascade into identical results downstream
+- Defaults matter: align option defaults across related classes to prevent subtle bugs
    - `Microsoft.Extensions.DependencyInjection.Abstractions` bumped from 10.0.3 → 10.0.5 (required by LocalLLMs 0.5.0)
    - Test project also bumped `Microsoft.Extensions.AI.Abstractions` to 10.4.0 to match
 

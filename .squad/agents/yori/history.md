@@ -191,3 +191,36 @@
 - All 85 tests pass (76 existing + 9 new), 0 failures, ~47s on net8.0
 - Shared singleton lifecycle fully covered: create → use → reset → recreate
 - LoadAsync attack surface covered: negative values, excessive values, dimension mismatches
+
+### 2025-XX-XX: MaxPromptLength Regression Tests
+
+**Task:** Add regression tests to prevent recurrence of the MaxPromptLength mismatch bug where `ToolRouterOptions.MaxPromptLength` defaulted to 4096 while `PromptDistillerOptions.MaxPromptLength` defaulted to 300, causing Mode 2 (LLM-distilled) to produce identical results to Mode 1 (embeddings-only) due to silent ONNX model failures.
+
+**Approach:**
+- Read existing test files (ToolRouterTests.cs, PromptDistillerTests.cs) to understand patterns and conventions
+- Added 5 regression tests across two files:
+  1. **ToolRouterTests.cs** — 3 tests in new "MaxPromptLength Regression Tests" region:
+     - `ToolRouterOptions_MaxPromptLength_DefaultAlignedWithDistillerOptions` — key regression test: verifies both options classes have aligned defaults
+     - `ToDistillerOptions_MaxPromptLength_MappedCorrectly` — verifies mapping with default AND custom values
+     - Updated existing `ToolRouterOptions_DefaultMaxPromptLength` test from 4096 to 300
+  2. **PromptDistillerTests.cs** — 2 tests in new "MaxPromptLength Regression Tests" region:
+     - `DistillIntentAsync_WithLongPrompt_TruncatesBeforeSendingToLLM` — verifies LLM receives truncated prompt when MaxPromptLength exceeded
+     - `DistillIntentAsync_With300CharDefault_TruncatesCorrectly` — verifies 300-char default truncation on 500+ char prompt
+
+**Context - The Bug:**
+- `ToolRouterOptions.MaxPromptLength` defaulted to 4096
+- `PromptDistillerOptions.MaxPromptLength` defaulted to 300
+- This mismatch caused local ONNX models to fail silently on long prompts and fall back to the original prompt
+- Result: Mode 2 produced identical results to Mode 1, making distillation ineffective
+
+**Key Findings:**
+- Tron had already fixed `ToolRouterOptions.MaxPromptLength` default from 4096 → 300 (not yet committed when I started)
+- Used existing `FakeChatClient` pattern from PromptDistillerTests to capture messages sent to LLM
+- Tests verify both default alignment AND runtime truncation behavior
+- All 121 tests pass (85 existing + 36 distillation/options tests from prior work)
+
+**Outcomes:**
+- 5 new regression tests committed alongside Tron's default fix
+- Tests ensure future changes can't reintroduce the mismatch
+- Key test: `DefaultAlignedWithDistillerOptions` will fail if someone changes one default without the other
+- All 121 tests pass, 0 failures, ~68s on net8.0

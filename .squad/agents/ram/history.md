@@ -22,3 +22,11 @@
 - Created detailed `docs/image-prompts.md` with 4 image generation prompts (NuGet logo, YouTube thumbnail, blog header, social card) including DALL-E prompts, color palettes, technical specs, visual guidelines
 - Updated README.md samples table and section to include TokenComparisonMax (120+ tools scenario with Spectre.Console UX)
 - Changed samples count from "Three sample applications" to "Four sample applications" in README intro text
+- Created McpToolRouting sample demonstrating LLM-powered tool routing with local inference (no cloud APIs)
+  - Program.cs showcases 3 scenarios: complex multi-step prompt distillation, simple one-shot routing, token savings analysis
+  - 28 realistic MCP tools across 7 domains (weather, email, calendar, files, web, math, code) for compelling demo
+  - Uses ElBruno.LocalLLMs with Qwen 2.5 0.5B ONNX model for local LLM inference
+  - README explains distillation pipeline, prerequisites (~1GB for model cache), and usage patterns
+- Added ToolRouter section to main README showing 4 usage patterns: simple routing, LLM distillation, one-shot static method, DI registration
+- Updated samples table from 6 to 7 samples, positioned McpToolRouting at #2 (after BasicUsage)
+- Updated solution file ElBruno.ModelContextProtocol.slnx to include McpToolRouting project in /src/samples/ folder

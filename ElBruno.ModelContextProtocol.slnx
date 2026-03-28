@@ -7,6 +7,7 @@
   </Folder>
   <Folder Name="/src/samples/">
     <Project Path="src\samples\BasicUsage\BasicUsage.csproj" />
+    <Project Path="src\samples\McpToolRouting\McpToolRouting.csproj" />
     <Project Path="src\samples\TokenComparison\TokenComparison.csproj" />
     <Project Path="src\samples\FilteredFunctionCalling\FilteredFunctionCalling.csproj" />
     <Project Path="src\samples\TokenComparisonMax\TokenComparisonMax.csproj" />

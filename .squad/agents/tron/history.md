@@ -220,3 +220,75 @@ Created a comprehensive validation sample with 53 real C# tool implementations:
 - Targets net8.0, references MCPToolRouter via ProjectReference
 - Added to solution file under `/src/samples/` folder
 - ✅ Builds successfully in Release mode (net8.0), 0 warnings, 0 errors
+
+### ToolRouter, PromptDistiller, ToolRouterOptions (2025-07-18)
+Added high-level routing facade with prompt distillation support:
+
+1. **PromptDistiller.cs** (`src/ElBruno.ModelContextProtocol.MCPToolRouter/`)
+   - Static helper using `IChatClient` (from Microsoft.Extensions.AI) to distill complex prompts into single-sentence intents
+   - `PromptDistillerOptions` class: configurable SystemPrompt, MaxOutputTokens (128), Temperature (0.1f)
+   - Falls back to original prompt if distilled result < 5 chars
+   - Full argument validation + XML doc comments
+
+2. **ToolRouterOptions.cs** (`src/ElBruno.ModelContextProtocol.MCPToolRouter/`)
+   - TopK (5), MinScore (0.0f), EnableDistillation (true)
+   - Distillation settings: SystemPrompt, MaxOutputTokens, Temperature
+   - `IndexOptions` property for underlying ToolIndex configuration
+   - Internal `ToDistillerOptions()` helper to bridge to PromptDistillerOptions
+
+3. **ToolRouter.cs** (`src/ElBruno.ModelContextProtocol.MCPToolRouter/`)
+   - Sealed class implementing `IAsyncDisposable`, combines ToolIndex + PromptDistiller
+   - Async factory `CreateAsync` (same pattern as ToolIndex): accepts tools, optional IChatClient, optional IEmbeddingGenerator
+   - Instance `RouteAsync`: distills prompt if client available + EnableDistillation, then delegates to ToolIndex.SearchAsync
+   - Static one-shot `RouteAsync`: creates temp index, routes, disposes
+   - `Index` property exposes underlying IToolIndex for advanced usage
+   - Internal `FromIndex` factory for DI (wraps existing IToolIndex without ownership)
+   - LoggerMessage: DistillationCompleted (EventId 100), RoutingCompleted (EventId 101)
+   - Ownership tracking: `_ownsIndex` determines if DisposeAsync disposes the index
+
+4. **ServiceCollectionExtensions.cs** — new overload:
+   - `AddMcpToolRouter(services, tools, chatClient, configure?)` registers both IToolIndex and ToolRouter as singletons
+   - ToolRouter registered via `FromIndex` (does not own the index — DI container manages lifecycle)
+
+**Technical Notes:**
+- No new NuGet packages required — all types from existing `Microsoft.Extensions.AI.Abstractions`
+- EventIds 100-101 for ToolRouter logging, avoids collision with ToolIndex EventIds 1-4
+- `IChatClient.GetResponseAsync` used (not `CompleteAsync`) per Microsoft.Extensions.AI abstractions API
+- ToolRouter uses `ConfigureAwait(false)` consistently, matching ToolIndex patterns
+
+**Build Verification:**
+- ✅ `dotnet build -c Release` — 0 warnings, 0 errors on both net8.0 and net10.0
+- ✅ `dotnet test -c Release --framework net8.0` — 29/29 tests pass (no regressions)
+
+### Model Management Convenience APIs (2025-07-18)
+Added static helpers and convenience APIs for embedding model management:
+
+1. **EmbeddingModelInfo.cs** (`src/ElBruno.ModelContextProtocol.MCPToolRouter/`)
+   - Static helper class for model cache inspection
+   - `DefaultModelName` constant: "sentence-transformers/all-MiniLM-L6-v2"
+   - `GetDefaultCacheDirectory()`: resolves default path matching `LocalEmbeddings.ModelDownloader` logic
+   - `GetModelDirectory(options?)`: resolves model directory from `LocalEmbeddingsOptions`
+   - `IsModelDownloaded(options?)`: checks for `.onnx` files in the resolved directory
+   - `GetStatus(options?)`: returns `EmbeddingModelStatus` with name, path, download flag, quantized pref
+
+2. **EmbeddingModelStatus.cs** (`src/ElBruno.ModelContextProtocol.MCPToolRouter/`)
+   - Sealed class with `required init` properties: `ModelName`, `CacheDirectory`, `IsDownloaded`, `PreferQuantized`
+
+3. **ToolRouterOptions.cs** — added convenience pass-through:
+   - `EmbeddingModelCacheDirectory` property flows to `IndexOptions.EmbeddingOptions.CacheDirectory`
+   - Applied in `ToolRouter.CreateAsync` before building the index
+
+4. **ToolRouter.cs** — added instance method:
+   - `GetEmbeddingModelStatus()`: returns `EmbeddingModelInfo.GetStatus()` using the router's options
+
+5. **ToolIndex.cs** — added static method:
+   - `GetEmbeddingModelStatus(ToolIndexOptions?)`: delegates to `EmbeddingModelInfo.GetStatus()`
+
+**Key Technical Detail:**
+- Default cache path verified via decompilation of `ModelDownloader`: `Path.Combine(Environment.GetFolderPath(SpecialFolder.LocalApplicationData), "ElBruno", "LocalEmbeddings", "models")`
+- Model name sanitized by replacing `/` with `Path.DirectorySeparatorChar` (mirrors `DefaultPathHelper.SanitizeModelName`)
+- Resolution priority: `ModelPath` > `CacheDirectory + ModelName` > default path + ModelName
+
+**Build Verification:**
+- ✅ `dotnet build -c Release` — 0 warnings, 0 errors on both net8.0 and net10.0
+- ✅ `dotnet test -c Release --framework net8.0` — 60/60 tests pass (10 new EmbeddingModelInfo tests + 50 existing)

@@ -207,6 +207,17 @@ public sealed partial class ToolIndex : IToolIndex
 
     #region IToolIndex Implementation
 
+    /// <summary>
+    /// Gets information about the embedding model used by a tool index with the given options.
+    /// Includes model name, cache directory, and whether the model is downloaded.
+    /// </summary>
+    /// <param name="options">Index options to inspect. If null, uses defaults.</param>
+    /// <returns>An <see cref="EmbeddingModelStatus"/> describing the model configuration.</returns>
+    public static EmbeddingModelStatus GetEmbeddingModelStatus(ToolIndexOptions? options = null)
+    {
+        return EmbeddingModelInfo.GetStatus(options?.EmbeddingOptions);
+    }
+
     /// <inheritdoc/>
     public int Count
     {

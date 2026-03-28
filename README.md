@@ -173,17 +173,19 @@ await using var router = await ToolRouter.CreateAsync(tools, chatClient);
 var results = await router.RouteAsync("Complex prompt here...", topK: 5);
 ```
 
-**Model Metadata (v0.6.1+)**
+**Model Metadata (v0.7.1+)**
 
-When using `ElBruno.LocalLLMs` v0.6.1+, the library exposes model metadata for runtime inspection:
+When using `ElBruno.LocalLLMs` v0.7.1+, the library exposes model metadata with accurate runtime limits:
 
 ```csharp
 using var client = await LocalChatClient.CreateAsync();
 var info = client.ModelInfo;
-Console.WriteLine($"Model: {info?.ModelName}, Context: {info?.MaxSequenceLength} tokens");
+Console.WriteLine($"Model: {info?.ModelName}");
+Console.WriteLine($"  Effective Max Sequence Length: {info?.MaxSequenceLength} tokens");
+Console.WriteLine($"  Config Max Sequence Length: {info?.ConfigMaxSequenceLength} tokens");
 ```
 
-Model metadata is informational — useful for display and diagnostics. Note that for local ONNX models, the reported `MaxSequenceLength` reflects the config file value, which may differ from the actual runtime limit.
+In v0.7.1+, `MaxSequenceLength` returns the **effective runtime limit** (e.g., 128 tokens for Phi-3.5 mini ONNX), while `ConfigMaxSequenceLength` preserves the raw config value (e.g., 131072). This ensures metadata accuracy for proper input validation and context window management. Mode 2 (`SearchUsingLLMAsync`) uses these values automatically to validate prompts fit within the model's capacity.
 
 ---
 
@@ -357,7 +359,7 @@ Models are downloaded over HTTPS and verified. Pin specific model versions if re
 
 ### Input Validation
 
-`ToolIndex.LoadAsync()` validates all numeric bounds. The default `MaxPromptLength` is 300 characters for `PromptDistillerOptions` (safe for local ONNX models with small context windows) and 4,096 characters for `ToolRouterOptions` (suitable for cloud LLMs). Prompts exceeding this limit are truncated automatically. A try-catch safety net ensures graceful fallback if the LLM encounters any errors.
+`ToolIndex.LoadAsync()` validates all numeric bounds. The default `MaxPromptLength` is 300 characters for `PromptDistillerOptions` (safe for local ONNX models with small context windows) and 4,096 characters for `ToolRouterOptions` (suitable for cloud LLMs). Prompts exceeding this limit are truncated automatically. A try-catch safety net ensures graceful fallback if the LLM encounters any errors. With `ElBruno.LocalLLMs` v0.7.1+, metadata accuracy is ensured via the dual `MaxSequenceLength` / `ConfigMaxSequenceLength` properties, enabling reliable context window management.
 
 ### Supply Chain
 

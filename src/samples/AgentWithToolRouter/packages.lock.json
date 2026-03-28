@@ -101,8 +101,8 @@
       },
       "ElBruno.LocalLLMs": {
         "type": "Transitive",
-        "resolved": "0.6.1",
-        "contentHash": "/GJvcrIoA1aLIVvJtfhmW5UNedqTTN1j9+KKjRqpaOg9GpeObf8PbW91x5d1AaT4lHr4w1mgJYhSeYMtbSYJmA==",
+        "resolved": "0.7.1",
+        "contentHash": "2gmRjHbbpgldL7HN2fc09WEiRRTmiSksuzlhgZpfHm5B+gbdytVRH06IPzoro/dxOBHvcsKsFm/GYorsN0etVQ==",
         "dependencies": {
           "ElBruno.HuggingFace.Downloader": "0.6.0",
           "Microsoft.Extensions.AI.Abstractions": "10.4.0",
@@ -469,7 +469,7 @@
         "type": "Project",
         "dependencies": {
           "ElBruno.LocalEmbeddings": "[1.1.5, )",
-          "ElBruno.LocalLLMs": "[0.6.1, )",
+          "ElBruno.LocalLLMs": "[0.7.1, )",
           "Microsoft.Extensions.AI.Abstractions": "[10.4.0, )",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.5, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.3, )",

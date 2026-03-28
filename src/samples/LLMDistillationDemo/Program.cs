@@ -179,7 +179,9 @@ Console.WriteLine($"✅ Models ready ({initSw.Elapsed.TotalSeconds:F1}s)");
 // Show model capabilities
 if (chatClient.ModelInfo is { } modelInfo)
 {
-    Console.WriteLine($"  📊 Model: {modelInfo.ModelName ?? "unknown"}, Context: {modelInfo.MaxSequenceLength} tokens");
+    Console.WriteLine($"  📊 Model: {modelInfo.ModelName ?? "unknown"}");
+    Console.WriteLine($"  📊 Config context window: {modelInfo.ConfigMaxSequenceLength} tokens");
+    Console.WriteLine($"  📊 Effective context window: {modelInfo.MaxSequenceLength} tokens");
 }
 
 Console.WriteLine();

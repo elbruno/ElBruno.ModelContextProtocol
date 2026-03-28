@@ -43,12 +43,13 @@ using var chatClient = await AnsiConsole.Status()
 AnsiConsole.MarkupLine("[green]✅ Local LLM ready[/]");
 AnsiConsole.WriteLine();
 
-// Show model metadata from v0.6.1
+// Show model metadata (v0.7.1: ConfigMaxSequenceLength = raw config, MaxSequenceLength = effective runtime limit)
 var modelInfo = chatClient.ModelInfo;
 if (modelInfo is not null)
 {
     AnsiConsole.MarkupLine($"[dim]  Model: {Markup.Escape(modelInfo.ModelName ?? "unknown")}[/]");
-    AnsiConsole.MarkupLine($"[dim]  Context window: {modelInfo.MaxSequenceLength} tokens[/]");
+    AnsiConsole.MarkupLine($"[dim]  Config context window: {modelInfo.ConfigMaxSequenceLength} tokens[/]");
+    AnsiConsole.MarkupLine($"[dim]  Effective context window: {modelInfo.MaxSequenceLength} tokens[/]");
     if (modelInfo.VocabSize.HasValue)
         AnsiConsole.MarkupLine($"[dim]  Vocab size: {modelInfo.VocabSize.Value:N0}[/]");
 }

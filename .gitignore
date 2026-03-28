@@ -1,6 +1,5 @@
-# Squad: ignore generated logs
-.squad/orchestration-log/
-.squad/log/
+# Squad: runtime team state (dev branches only, guarded on main)
+.squad/
 
 # .NET build outputs
 [Bb]in/

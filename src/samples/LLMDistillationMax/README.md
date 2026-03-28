@@ -47,7 +47,7 @@ var results = await ToolRouter.SearchUsingLLMAsync(prompt, tools);
 - **.NET 8.0** or later
 - **No Azure OpenAI** — runs 100% locally
 - ~1.5 GB disk space for model downloads (first run only)
-- *Optional:* For GPU acceleration, swap the ONNX runtime package — use `Microsoft.ML.OnnxRuntimeGenAI.DirectML` (Windows GPU) or `Microsoft.ML.OnnxRuntimeGenAI.Cuda` (NVIDIA). The default is CPU-only.
+- **GPU acceleration enabled by default** — uses `Microsoft.ML.OnnxRuntimeGenAI.DirectML` which automatically uses the GPU when available and falls back to CPU otherwise. For NVIDIA GPUs, you can optionally swap to `Microsoft.ML.OnnxRuntimeGenAI.Cuda`.
 
 ## Running
 

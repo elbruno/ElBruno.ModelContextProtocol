@@ -37,7 +37,7 @@ For each scenario, the demo outputs:
 - **.NET 8.0 or higher**
 - **~1.5 GB disk space** — first run downloads the embedding model (~90 MB) and local LLM (~500 MB)
 - No API keys required — everything runs locally
-- *Optional:* For GPU acceleration, swap the ONNX runtime package — use `Microsoft.ML.OnnxRuntimeGenAI.DirectML` (Windows GPU) or `Microsoft.ML.OnnxRuntimeGenAI.Cuda` (NVIDIA). The default is CPU-only.
+- **GPU acceleration enabled by default** — uses `Microsoft.ML.OnnxRuntimeGenAI.DirectML` which automatically uses the GPU when available and falls back to CPU otherwise. For NVIDIA GPUs, you can optionally swap to `Microsoft.ML.OnnxRuntimeGenAI.Cuda`.
 
 ## Running the Sample
 

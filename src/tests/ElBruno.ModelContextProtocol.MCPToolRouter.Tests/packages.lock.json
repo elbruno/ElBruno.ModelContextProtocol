@@ -71,12 +71,14 @@
       },
       "ElBruno.LocalLLMs": {
         "type": "Transitive",
-        "resolved": "0.7.1",
-        "contentHash": "2gmRjHbbpgldL7HN2fc09WEiRRTmiSksuzlhgZpfHm5B+gbdytVRH06IPzoro/dxOBHvcsKsFm/GYorsN0etVQ==",
+        "resolved": "0.7.2",
+        "contentHash": "MYIYkKntUWroXLJLbRXSUngvZv9COqO/Gct7Cn+yBeQcjPNSo0ze3OBkSNFn3MJdNj7xjOuPBsuj+YrE4h2+fg==",
         "dependencies": {
           "ElBruno.HuggingFace.Downloader": "0.6.0",
           "Microsoft.Extensions.AI.Abstractions": "10.4.0",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.5",
+          "Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions": "9.0.0",
+          "Microsoft.Extensions.Logging.Abstractions": "9.0.0",
           "Microsoft.ML.OnnxRuntimeGenAI": "0.12.2"
         }
       },
@@ -148,6 +150,11 @@
           "Microsoft.Extensions.Options": "10.0.3",
           "System.Diagnostics.DiagnosticSource": "10.0.3"
         }
+      },
+      "Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions": {
+        "type": "Transitive",
+        "resolved": "9.0.0",
+        "contentHash": "H1IbHm/MnUgEV0N07WrkPBIIoX7isP6IPaqUdZ3CwbMcUVDGIu+okamW28kyDRfIiZqbTbyHuNIkr4ZSHPyvDw=="
       },
       "Microsoft.Extensions.Http": {
         "type": "Transitive",
@@ -370,7 +377,7 @@
         "type": "Project",
         "dependencies": {
           "ElBruno.LocalEmbeddings": "[1.1.5, )",
-          "ElBruno.LocalLLMs": "[0.7.1, )",
+          "ElBruno.LocalLLMs": "[0.7.2, )",
           "Microsoft.Extensions.AI.Abstractions": "[10.4.0, )",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.5, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.3, )",

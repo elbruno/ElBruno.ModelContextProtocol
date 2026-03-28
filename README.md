@@ -450,7 +450,6 @@ This project is licensed under the MIT License — see [LICENSE](LICENSE) for de
 - 💼 LinkedIn: https://linkedin.com/in/elbruno
 - 🐦 Twitter: https://twitter.com/elbruno
 - 🎙️ Podcast: https://notienenombre.com
-- 🎙️ Podcast: https://inthelabs.dev
 
 ## Acknowledgments
 

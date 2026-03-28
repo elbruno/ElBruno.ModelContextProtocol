@@ -17,6 +17,8 @@ namespace ElBruno.ModelContextProtocol.MCPToolRouter;
 public sealed partial class ToolIndex : IToolIndex
 {
     private const int FormatVersion = 1;
+    private const int MaxToolCount = 100_000;
+    private const int MaxEmbeddingDimension = 8192;
 
     private readonly IEmbeddingGenerator<string, Embedding<float>> _embeddingGenerator;
     private readonly bool _ownsGenerator;
@@ -176,7 +178,12 @@ public sealed partial class ToolIndex : IToolIndex
                 throw new InvalidDataException($"Unsupported index format version: {version}. Expected: {FormatVersion}.");
 
             var toolCount = reader.ReadInt32();
+            if (toolCount < 0 || toolCount > MaxToolCount)
+                throw new InvalidDataException($"Tool count {toolCount} is out of range [0, {MaxToolCount}].");
+
             var embeddingDim = reader.ReadInt32();
+            if (embeddingDim < 0 || embeddingDim > MaxEmbeddingDimension)
+                throw new InvalidDataException($"Embedding dimension {embeddingDim} is out of range [0, {MaxEmbeddingDimension}].");
 
             var tools = new List<Tool>(toolCount);
             var vectors = new List<float[]>(toolCount);
@@ -192,6 +199,9 @@ public sealed partial class ToolIndex : IToolIndex
                 });
 
                 var vectorLength = reader.ReadInt32();
+                if (vectorLength != embeddingDim)
+                    throw new InvalidDataException($"Vector {i} has dimension {vectorLength}, expected {embeddingDim}.");
+
                 var vector = new float[vectorLength];
                 for (int j = 0; j < vectorLength; j++)
                     vector[j] = reader.ReadSingle();
@@ -425,7 +435,7 @@ public sealed partial class ToolIndex : IToolIndex
 
     #region Private Helpers
 
-    private static async Task<IEmbeddingGenerator<string, Embedding<float>>> CreateDefaultGeneratorAsync(
+    internal static async Task<IEmbeddingGenerator<string, Embedding<float>>> CreateDefaultGeneratorAsync(
         ToolIndexOptions options,
         CancellationToken cancellationToken)
     {

@@ -383,4 +383,109 @@ public class ToolRouterTests : IClassFixture<SharedToolRouterFixture>
     }
 
     #endregion
+
+    #region Shared Singleton Tests (Phase 2)
+
+    [Fact]
+    public async Task StaticSearch_WithSharedResources_ReturnsResults()
+    {
+        try
+        {
+            var tools = new[]
+            {
+                new Tool { Name = "get_weather", Description = "Get current weather information for a location" },
+                new Tool { Name = "send_email", Description = "Send an email message to a recipient" }
+            };
+
+            var results = await ToolRouter.SearchAsync("What's the weather?", tools);
+
+            Assert.NotEmpty(results);
+            Assert.Equal("get_weather", results[0].Tool.Name);
+        }
+        finally
+        {
+            await ToolRouter.ResetSharedResourcesAsync();
+        }
+    }
+
+    [Fact]
+    public async Task StaticSearch_CalledTwice_ProducesConsistentResults()
+    {
+        try
+        {
+            var tools = new[]
+            {
+                new Tool { Name = "get_weather", Description = "Get current weather information" },
+                new Tool { Name = "send_email", Description = "Send email messages" }
+            };
+
+            var results1 = await ToolRouter.SearchAsync("weather forecast", tools);
+            var results2 = await ToolRouter.SearchAsync("weather forecast", tools);
+
+            Assert.Equal(results1.Count, results2.Count);
+            for (int i = 0; i < results1.Count; i++)
+            {
+                Assert.Equal(results1[i].Tool.Name, results2[i].Tool.Name);
+                Assert.Equal(results1[i].Score, results2[i].Score);
+            }
+        }
+        finally
+        {
+            await ToolRouter.ResetSharedResourcesAsync();
+        }
+    }
+
+    [Fact]
+    public async Task ResetSharedResources_DoesNotThrow()
+    {
+        var exception = await Record.ExceptionAsync(() => ToolRouter.ResetSharedResourcesAsync());
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public async Task ResetSharedResources_ThenSearch_StillWorks()
+    {
+        try
+        {
+            var tools = new[]
+            {
+                new Tool { Name = "get_weather", Description = "Get current weather information" },
+                new Tool { Name = "send_email", Description = "Send email messages" }
+            };
+
+            // First search to populate shared resources
+            await ToolRouter.SearchAsync("weather", tools);
+
+            // Reset shared resources
+            await ToolRouter.ResetSharedResourcesAsync();
+
+            // Search again — should recreate shared resources and still work
+            var results = await ToolRouter.SearchAsync("weather forecast", tools);
+
+            Assert.NotEmpty(results);
+            Assert.Equal("get_weather", results[0].Tool.Name);
+        }
+        finally
+        {
+            await ToolRouter.ResetSharedResourcesAsync();
+        }
+    }
+
+    [Fact]
+    public async Task StaticSearch_WithUseSharedResourcesFalse_StillWorks()
+    {
+        var tools = new[]
+        {
+            new Tool { Name = "get_weather", Description = "Get current weather information" },
+            new Tool { Name = "send_email", Description = "Send email messages" }
+        };
+        var options = new ToolRouterOptions { UseSharedResources = false };
+
+        var results = await ToolRouter.SearchAsync("weather forecast", tools, options: options);
+
+        Assert.NotEmpty(results);
+        Assert.Equal("get_weather", results[0].Tool.Name);
+    }
+
+    #endregion
 }

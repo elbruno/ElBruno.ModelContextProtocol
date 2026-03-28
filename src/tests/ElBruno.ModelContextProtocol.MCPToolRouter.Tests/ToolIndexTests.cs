@@ -1,3 +1,4 @@
+using Microsoft.Extensions.AI;
 using ModelContextProtocol.Protocol;
 using Xunit;
 
@@ -604,6 +605,103 @@ public class ToolIndexTests : IClassFixture<SharedToolIndexFixture>
         await index.DisposeAsync();
         var exception = await Record.ExceptionAsync(async () => await index.DisposeAsync());
         Assert.Null(exception);
+    }
+
+    #endregion
+
+    #region LoadAsync Bounds Checking Tests (Phase 2)
+
+    /// <summary>
+    /// Fake embedding generator that never executes — used for LoadAsync tests
+    /// where validation errors fire before any embedding generation.
+    /// </summary>
+    private class FakeEmbeddingGenerator : IEmbeddingGenerator<string, Embedding<float>>
+    {
+        public EmbeddingGeneratorMetadata Metadata => new("fake");
+
+        public Task<GeneratedEmbeddings<Embedding<float>>> GenerateAsync(
+            IEnumerable<string> values, EmbeddingGenerationOptions? options = null, CancellationToken cancellationToken = default)
+            => throw new NotImplementedException("Should not be called in bounds-checking tests");
+
+        public object? GetService(Type serviceType, object? key = null) => null;
+        public void Dispose() { }
+    }
+
+    [Fact]
+    public async Task LoadAsync_WithNegativeToolCount_ThrowsInvalidDataException()
+    {
+        // Arrange — binary stream with toolCount = -1
+        using var ms = new MemoryStream();
+        using (var writer = new BinaryWriter(ms, System.Text.Encoding.UTF8, leaveOpen: true))
+        {
+            writer.Write(1);    // format version
+            writer.Write(-1);   // toolCount (negative = invalid)
+            writer.Write(384);  // embeddingDim
+        }
+        ms.Position = 0;
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidDataException>(
+            async () => await ToolIndex.LoadAsync(ms, new FakeEmbeddingGenerator()));
+    }
+
+    [Fact]
+    public async Task LoadAsync_WithExcessiveToolCount_ThrowsInvalidDataException()
+    {
+        // Arrange — binary stream with toolCount = 200,000 (exceeds MaxToolCount = 100,000)
+        using var ms = new MemoryStream();
+        using (var writer = new BinaryWriter(ms, System.Text.Encoding.UTF8, leaveOpen: true))
+        {
+            writer.Write(1);        // format version
+            writer.Write(200_000);  // toolCount (too large)
+            writer.Write(384);      // embeddingDim
+        }
+        ms.Position = 0;
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidDataException>(
+            async () => await ToolIndex.LoadAsync(ms, new FakeEmbeddingGenerator()));
+    }
+
+    [Fact]
+    public async Task LoadAsync_WithExcessiveEmbeddingDim_ThrowsInvalidDataException()
+    {
+        // Arrange — binary stream with embeddingDim = 10,000 (exceeds MaxEmbeddingDimension = 8,192)
+        using var ms = new MemoryStream();
+        using (var writer = new BinaryWriter(ms, System.Text.Encoding.UTF8, leaveOpen: true))
+        {
+            writer.Write(1);       // format version
+            writer.Write(1);       // toolCount (valid)
+            writer.Write(10_000);  // embeddingDim (too large)
+        }
+        ms.Position = 0;
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidDataException>(
+            async () => await ToolIndex.LoadAsync(ms, new FakeEmbeddingGenerator()));
+    }
+
+    [Fact]
+    public async Task LoadAsync_WithMismatchedVectorDim_ThrowsInvalidDataException()
+    {
+        // Arrange — valid header but vector dimension doesn't match embeddingDim
+        using var ms = new MemoryStream();
+        using (var writer = new BinaryWriter(ms, System.Text.Encoding.UTF8, leaveOpen: true))
+        {
+            writer.Write(1);            // format version
+            writer.Write(1);            // toolCount = 1
+            writer.Write(3);            // embeddingDim = 3
+            writer.Write("test_tool");  // tool name
+            writer.Write("A test");     // tool description
+            writer.Write(5);            // vectorLength = 5 (mismatches embeddingDim = 3)
+            for (int i = 0; i < 5; i++)
+                writer.Write(1.0f);     // vector data (won't matter — fails on dimension check)
+        }
+        ms.Position = 0;
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidDataException>(
+            async () => await ToolIndex.LoadAsync(ms, new FakeEmbeddingGenerator()));
     }
 
     #endregion

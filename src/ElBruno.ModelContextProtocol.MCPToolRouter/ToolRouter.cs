@@ -181,11 +181,110 @@ public sealed partial class ToolRouter : IAsyncDisposable
 
     #endregion
 
+    #region Shared Resources for Static API
+
+    private static readonly SemaphoreSlim _sharedResourceLock = new(1, 1);
+    private static IEmbeddingGenerator<string, Embedding<float>>? _sharedEmbeddingGenerator;
+    private static IChatClient? _sharedChatClient;
+
+    private static async Task<IEmbeddingGenerator<string, Embedding<float>>> GetOrCreateSharedEmbeddingGeneratorAsync(
+        ToolRouterOptions options, CancellationToken ct)
+    {
+        if (_sharedEmbeddingGenerator is not null)
+            return _sharedEmbeddingGenerator;
+
+        await _sharedResourceLock.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            if (_sharedEmbeddingGenerator is not null)
+                return _sharedEmbeddingGenerator;
+
+            var indexOptions = options.IndexOptions ?? new ToolIndexOptions();
+
+            if (!string.IsNullOrEmpty(options.EmbeddingModelCacheDirectory))
+            {
+                indexOptions.EmbeddingOptions ??= new ElBruno.LocalEmbeddings.Options.LocalEmbeddingsOptions();
+                indexOptions.EmbeddingOptions.CacheDirectory = options.EmbeddingModelCacheDirectory;
+            }
+
+            _sharedEmbeddingGenerator = await ToolIndex.CreateDefaultGeneratorAsync(indexOptions, ct).ConfigureAwait(false);
+            return _sharedEmbeddingGenerator;
+        }
+        finally
+        {
+            _sharedResourceLock.Release();
+        }
+    }
+
+    private static async Task<IChatClient> GetOrCreateSharedChatClientAsync(
+        ToolRouterOptions options, CancellationToken ct)
+    {
+        if (_sharedChatClient is not null)
+            return _sharedChatClient;
+
+        await _sharedResourceLock.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            if (_sharedChatClient is not null)
+                return _sharedChatClient;
+
+            var llmOptions = new ElBruno.LocalLLMs.LocalLLMsOptions();
+            if (options.LocalLLMModel is not null)
+                llmOptions.Model = options.LocalLLMModel;
+
+            _sharedChatClient = await ElBruno.LocalLLMs.LocalChatClient.CreateAsync(
+                llmOptions, progress: null, ct).ConfigureAwait(false);
+            return _sharedChatClient;
+        }
+        finally
+        {
+            _sharedResourceLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// Releases shared resources (embedding generator, chat client) used by static API methods.
+    /// Call this when your application shuts down or in test cleanup.
+    /// Do not call while static API searches are in flight.
+    /// </summary>
+    public static async Task ResetSharedResourcesAsync()
+    {
+        await _sharedResourceLock.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (_sharedEmbeddingGenerator is not null)
+            {
+                if (_sharedEmbeddingGenerator is IAsyncDisposable asyncDisposable)
+                    await asyncDisposable.DisposeAsync().ConfigureAwait(false);
+                else if (_sharedEmbeddingGenerator is IDisposable disposable)
+                    disposable.Dispose();
+                _sharedEmbeddingGenerator = null;
+            }
+
+            if (_sharedChatClient is not null)
+            {
+                if (_sharedChatClient is IAsyncDisposable asyncDisposable)
+                    await asyncDisposable.DisposeAsync().ConfigureAwait(false);
+                else if (_sharedChatClient is IDisposable disposable)
+                    disposable.Dispose();
+                _sharedChatClient = null;
+            }
+        }
+        finally
+        {
+            _sharedResourceLock.Release();
+        }
+    }
+
+    #endregion
+
     #region Simplified Static API
 
     /// <summary>
     /// Embeddings-only semantic search — one-liner for finding the most relevant tools.
     /// Creates a temporary index, searches, and disposes. No LLM required.
+    /// When <see cref="ToolRouterOptions.UseSharedResources"/> is true (default),
+    /// the expensive ONNX embedding session is shared across calls for ~15-35× faster repeated use.
     /// </summary>
     /// <param name="userPrompt">The user prompt to search for.</param>
     /// <param name="tools">The MCP tool definitions to search.</param>
@@ -204,13 +303,23 @@ public sealed partial class ToolRouter : IAsyncDisposable
     {
         options ??= new ToolRouterOptions();
         options.EnableDistillation = false;
-        await using var router = await CreateAsync(tools, chatClient: null, options, ct).ConfigureAwait(false);
-        return await router.RouteAsync(userPrompt, topK, minScore, ct).ConfigureAwait(false);
+
+        if (options.UseSharedResources)
+        {
+            var generator = await GetOrCreateSharedEmbeddingGeneratorAsync(options, ct).ConfigureAwait(false);
+            await using var router = await CreateAsync(tools, chatClient: null, generator, options, ct).ConfigureAwait(false);
+            return await router.RouteAsync(userPrompt, topK, minScore, ct).ConfigureAwait(false);
+        }
+
+        await using var freshRouter = await CreateAsync(tools, chatClient: null, options, ct).ConfigureAwait(false);
+        return await freshRouter.RouteAsync(userPrompt, topK, minScore, ct).ConfigureAwait(false);
     }
 
     /// <summary>
     /// One-shot search with LLM prompt distillation using a local LLM.
     /// Internally downloads and uses a small local model for prompt distillation.
+    /// When <see cref="ToolRouterOptions.UseSharedResources"/> is true (default),
+    /// both the ONNX embedding session and the local chat client are shared across calls.
     /// For custom LLM backends (Azure OpenAI, Ollama, etc.), use the overload that accepts an IChatClient.
     /// </summary>
     /// <param name="userPrompt">The user prompt to distill and search for.</param>
@@ -228,20 +337,31 @@ public sealed partial class ToolRouter : IAsyncDisposable
         ToolRouterOptions? options = null,
         CancellationToken ct = default)
     {
+        options ??= new ToolRouterOptions();
+
+        if (options.UseSharedResources)
+        {
+            var chatClient = await GetOrCreateSharedChatClientAsync(options, ct).ConfigureAwait(false);
+            return await SearchUsingLLMAsync(userPrompt, tools, chatClient, topK, minScore, options, ct)
+                .ConfigureAwait(false);
+        }
+
         var llmOptions = new ElBruno.LocalLLMs.LocalLLMsOptions();
-        if (options?.LocalLLMModel is not null)
+        if (options.LocalLLMModel is not null)
             llmOptions.Model = options.LocalLLMModel;
 
-        using var chatClient = await ElBruno.LocalLLMs.LocalChatClient.CreateAsync(
+        using var freshClient = await ElBruno.LocalLLMs.LocalChatClient.CreateAsync(
             llmOptions, progress: null, ct).ConfigureAwait(false);
 
-        return await SearchUsingLLMAsync(userPrompt, tools, chatClient, topK, minScore, options, ct)
+        return await SearchUsingLLMAsync(userPrompt, tools, freshClient, topK, minScore, options, ct)
             .ConfigureAwait(false);
     }
 
     /// <summary>
     /// LLM-distilled semantic search — distills the prompt via an LLM before searching.
     /// Creates a temporary index, distills, searches, and disposes.
+    /// When <see cref="ToolRouterOptions.UseSharedResources"/> is true (default),
+    /// the ONNX embedding session is shared across calls.
     /// </summary>
     /// <param name="userPrompt">The user prompt to distill and search for.</param>
     /// <param name="tools">The MCP tool definitions to search.</param>
@@ -263,8 +383,16 @@ public sealed partial class ToolRouter : IAsyncDisposable
         ArgumentNullException.ThrowIfNull(chatClient);
         options ??= new ToolRouterOptions();
         options.EnableDistillation = true;
-        await using var router = await CreateAsync(tools, chatClient, options, ct).ConfigureAwait(false);
-        return await router.RouteAsync(userPrompt, topK, minScore, ct).ConfigureAwait(false);
+
+        if (options.UseSharedResources)
+        {
+            var generator = await GetOrCreateSharedEmbeddingGeneratorAsync(options, ct).ConfigureAwait(false);
+            await using var router = await CreateAsync(tools, chatClient, generator, options, ct).ConfigureAwait(false);
+            return await router.RouteAsync(userPrompt, topK, minScore, ct).ConfigureAwait(false);
+        }
+
+        await using var freshRouter = await CreateAsync(tools, chatClient, options, ct).ConfigureAwait(false);
+        return await freshRouter.RouteAsync(userPrompt, topK, minScore, ct).ConfigureAwait(false);
     }
 
     #endregion

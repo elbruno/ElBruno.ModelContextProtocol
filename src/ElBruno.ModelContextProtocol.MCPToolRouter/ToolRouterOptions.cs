@@ -59,6 +59,13 @@ public sealed class ToolRouterOptions
     public ElBruno.LocalLLMs.ModelDefinition? LocalLLMModel { get; set; }
 
     /// <summary>
+    /// When true (default), static API methods share a process-level embedding generator
+    /// and chat client for better performance on repeated calls.
+    /// When false, static API methods create fresh resources per call (slower but isolated).
+    /// </summary>
+    public bool UseSharedResources { get; set; } = true;
+
+    /// <summary>
     /// Options for the underlying <see cref="ToolIndex"/>. If null, uses defaults.
     /// </summary>
     public ToolIndexOptions? IndexOptions { get; set; }

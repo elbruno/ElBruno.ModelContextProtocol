@@ -464,3 +464,10 @@ Completed comprehensive performance analysis as part of coordinated audit sprint
 - **Samples:** LLMDistillationMax and LLMDistillationDemo now display model metadata after client creation
 - **Gotcha:** LLMDistillationDemo had stale bin/obj cache from v0.5.0; required full bin/obj cleanup to resolve CS1061 on `ModelInfo`
 - Build: 0 warnings, 0 errors; Tests: 85/85 passed
+
+### Revert ModelInfo Auto-Detection for Prompt Truncation
+- **Root cause:** genai_config.json reports MaxSequenceLength=131072 (Phi-3.5 theoretical window), but ONNX runtime model has ~128-token actual limit. Auto-detection trusted the config value, computed 524K safe chars, so prompts were never truncated. LLM calls then overflowed, try-catch caught the error, fell back to original prompt — making Mode 2 identical to Mode 1.
+- **Fix:** Reverted PromptDistillerOptions.MaxPromptLength default from 4096 back to 300 (safe for local ONNX models). Removed ModelMaxSequenceLength property, auto-compute logic, LogMessage 202, DetectedModelMaxSequenceLength from ToolRouterOptions, and all _sharedModelMaxSequenceLength wiring in ToolRouter.
+- **Key learning:** Model metadata from config files is unreliable for runtime limits — use conservative hardcoded defaults instead. Auto-detection sounds elegant but breaks silently when config != reality.
+- **Preserved:** ModelInfo display in samples (LLMDistillationMax, LLMDistillationDemo) for diagnostics — metadata is informational, just not trustworthy for truncation control.
+- Build: 0 warnings, 0 errors; Tests: 85/85 passed

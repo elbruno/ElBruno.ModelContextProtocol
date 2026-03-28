@@ -29,19 +29,10 @@ public sealed class PromptDistillerOptions
 
     /// <summary>
     /// Maximum character length for prompts sent to the LLM for distillation.
-    /// Prompts exceeding this length are truncated. Default is 4096.
+    /// Prompts exceeding this length are truncated. Default is 300.
     /// Set to 0 or negative to disable truncation.
     /// </summary>
-    public int MaxPromptLength { get; set; } = 4096;
-
-    /// <summary>
-    /// Maximum sequence length (context window) of the LLM model, in tokens.
-    /// When set, the effective prompt length limit is automatically computed
-    /// to fit within the model's context window, accounting for system prompt
-    /// and output token reservation. Takes precedence over MaxPromptLength when
-    /// the computed safe length is smaller. Defaults to null (use MaxPromptLength as-is).
-    /// </summary>
-    public int? ModelMaxSequenceLength { get; set; }
+    public int MaxPromptLength { get; set; } = 300;
 }
 
 /// <summary>
@@ -109,25 +100,11 @@ public static partial class PromptDistiller
         options ??= new PromptDistillerOptions();
         logger ??= NullLogger.Instance;
 
-        // Auto-compute effective max prompt length from model metadata
-        var maxPromptLength = options.MaxPromptLength;
-        if (options.ModelMaxSequenceLength is > 0)
-        {
-            const int reservedTokens = 70; // ~40 system prompt + ~30 output buffer
-            var availableTokens = Math.Max(1, options.ModelMaxSequenceLength.Value - reservedTokens);
-            var safeChars = availableTokens * 4; // ~4 chars per token estimate
-            if (maxPromptLength <= 0 || safeChars < maxPromptLength)
-            {
-                maxPromptLength = safeChars;
-                LogMessages.AutoConfiguredFromModelMetadata(logger, maxPromptLength, options.ModelMaxSequenceLength.Value);
-            }
-        }
-
-        if (maxPromptLength > 0 && userPrompt.Length > maxPromptLength)
+        if (options.MaxPromptLength > 0 && userPrompt.Length > options.MaxPromptLength)
         {
             var originalLength = userPrompt.Length;
-            userPrompt = userPrompt[..maxPromptLength];
-            LogMessages.PromptTruncated(logger, originalLength, maxPromptLength);
+            userPrompt = userPrompt[..options.MaxPromptLength];
+            LogMessages.PromptTruncated(logger, originalLength, options.MaxPromptLength);
         }
 
         var messages = new List<ChatMessage>
@@ -170,8 +147,7 @@ public static partial class PromptDistiller
         [LoggerMessage(EventId = 201, Level = LogLevel.Warning, Message = "LLM distillation failed, falling back to original prompt: {ErrorMessage}")]
         public static partial void DistillationFailed(ILogger logger, string errorMessage);
 
-        [LoggerMessage(EventId = 202, Level = LogLevel.Debug, Message = "Auto-configured max prompt length to {MaxLength} chars from model context window of {MaxSequenceLength} tokens")]
-        public static partial void AutoConfiguredFromModelMetadata(ILogger logger, int maxLength, int maxSequenceLength);
+
     }
 
     #endregion

@@ -175,6 +175,13 @@ using var chatClient = await ElBruno.LocalLLMs.LocalChatClient.CreateAsync(
 
 initSw.Stop();
 Console.WriteLine($"✅ Models ready ({initSw.Elapsed.TotalSeconds:F1}s)");
+
+// Show model capabilities
+if (chatClient.ModelInfo is { } modelInfo)
+{
+    Console.WriteLine($"  📊 Model: {modelInfo.ModelName ?? "unknown"}, Context: {modelInfo.MaxSequenceLength} tokens");
+}
+
 Console.WriteLine();
 
 // ---------------------------------------------------------------------------

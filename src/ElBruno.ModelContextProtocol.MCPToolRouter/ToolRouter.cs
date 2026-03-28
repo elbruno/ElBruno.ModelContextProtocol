@@ -186,6 +186,7 @@ public sealed partial class ToolRouter : IAsyncDisposable
     private static readonly SemaphoreSlim _sharedResourceLock = new(1, 1);
     private static IEmbeddingGenerator<string, Embedding<float>>? _sharedEmbeddingGenerator;
     private static IChatClient? _sharedChatClient;
+    private static int? _sharedModelMaxSequenceLength;
 
     private static async Task<IEmbeddingGenerator<string, Embedding<float>>> GetOrCreateSharedEmbeddingGeneratorAsync(
         ToolRouterOptions options, CancellationToken ct)
@@ -234,6 +235,10 @@ public sealed partial class ToolRouter : IAsyncDisposable
 
             _sharedChatClient = await ElBruno.LocalLLMs.LocalChatClient.CreateAsync(
                 llmOptions, progress: null, ct).ConfigureAwait(false);
+
+            if (_sharedChatClient is ElBruno.LocalLLMs.LocalChatClient localClient)
+                _sharedModelMaxSequenceLength = localClient.ModelInfo?.MaxSequenceLength;
+
             return _sharedChatClient;
         }
         finally
@@ -269,6 +274,8 @@ public sealed partial class ToolRouter : IAsyncDisposable
                     disposable.Dispose();
                 _sharedChatClient = null;
             }
+
+            _sharedModelMaxSequenceLength = null;
         }
         finally
         {
@@ -342,6 +349,7 @@ public sealed partial class ToolRouter : IAsyncDisposable
         if (options.UseSharedResources)
         {
             var chatClient = await GetOrCreateSharedChatClientAsync(options, ct).ConfigureAwait(false);
+            options.DetectedModelMaxSequenceLength = _sharedModelMaxSequenceLength;
             return await SearchUsingLLMAsync(userPrompt, tools, chatClient, topK, minScore, options, ct)
                 .ConfigureAwait(false);
         }
@@ -352,6 +360,9 @@ public sealed partial class ToolRouter : IAsyncDisposable
 
         using var freshClient = await ElBruno.LocalLLMs.LocalChatClient.CreateAsync(
             llmOptions, progress: null, ct).ConfigureAwait(false);
+
+        if (freshClient.ModelInfo is { MaxSequenceLength: > 0 } meta)
+            options.DetectedModelMaxSequenceLength = meta.MaxSequenceLength;
 
         return await SearchUsingLLMAsync(userPrompt, tools, freshClient, topK, minScore, options, ct)
             .ConfigureAwait(false);

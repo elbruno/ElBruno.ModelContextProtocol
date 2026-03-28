@@ -453,3 +453,14 @@ Completed comprehensive performance analysis as part of coordinated audit sprint
 - **Backward compatible:** Original 4-param overload delegates to new 5-param overload with NullLogger
 - Build: 0 warnings, 0 errors (Release, net8.0 + net10.0)
 - Tests: 85/85 passed on net8.0
+
+### ElBruno.LocalLLMs v0.6.1 Upgrade & Model Metadata Integration
+- **Package upgrade:** ElBruno.LocalLLMs 0.5.0 → 0.6.1 in MCPToolRouter.csproj
+- **New API:** v0.6.1 exposes `LocalChatClient.ModelInfo` (`ModelMetadata?`) with MaxSequenceLength, ModelName, VocabSize
+- **PromptDistillerOptions:** Added `ModelMaxSequenceLength` (nullable int); reverted MaxPromptLength default from 300 back to 4096
+- **PromptDistiller.DistillIntentAsync:** Auto-computes effective prompt length from model context window (reserved 70 tokens, ~4 chars/token estimate); new LogMessage EventId=202 for auto-configuration
+- **ToolRouterOptions:** Added internal `DetectedModelMaxSequenceLength`; wired through `ToDistillerOptions()`
+- **ToolRouter:** Static field `_sharedModelMaxSequenceLength` captures model metadata on client creation; auto-populates `DetectedModelMaxSequenceLength` in both shared and fresh paths of `SearchUsingLLMAsync`
+- **Samples:** LLMDistillationMax and LLMDistillationDemo now display model metadata after client creation
+- **Gotcha:** LLMDistillationDemo had stale bin/obj cache from v0.5.0; required full bin/obj cleanup to resolve CS1061 on `ModelInfo`
+- Build: 0 warnings, 0 errors; Tests: 85/85 passed

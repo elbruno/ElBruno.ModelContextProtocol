@@ -79,6 +79,13 @@ public sealed class ToolRouterOptions
     public ToolIndexOptions? IndexOptions { get; set; }
 
     /// <summary>
+    /// Auto-detected maximum sequence length from the local LLM model.
+    /// Set automatically when using the zero-setup SearchUsingLLMAsync API.
+    /// Used by ToDistillerOptions() to auto-configure prompt truncation.
+    /// </summary>
+    internal int? DetectedModelMaxSequenceLength { get; set; }
+
+    /// <summary>
     /// Creates a <see cref="PromptDistillerOptions"/> instance from the distillation settings in this options object.
     /// </summary>
     internal PromptDistillerOptions ToDistillerOptions() => new()
@@ -86,6 +93,7 @@ public sealed class ToolRouterOptions
         SystemPrompt = DistillationSystemPrompt,
         MaxOutputTokens = DistillationMaxOutputTokens,
         Temperature = DistillationTemperature,
-        MaxPromptLength = MaxPromptLength
+        MaxPromptLength = MaxPromptLength,
+        ModelMaxSequenceLength = DetectedModelMaxSequenceLength
     };
 }

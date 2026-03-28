@@ -43,6 +43,16 @@ using var chatClient = await AnsiConsole.Status()
 AnsiConsole.MarkupLine("[green]✅ Local LLM ready[/]");
 AnsiConsole.WriteLine();
 
+// Show model metadata from v0.6.1
+var modelInfo = chatClient.ModelInfo;
+if (modelInfo is not null)
+{
+    AnsiConsole.MarkupLine($"[dim]  Model: {Markup.Escape(modelInfo.ModelName ?? "unknown")}[/]");
+    AnsiConsole.MarkupLine($"[dim]  Context window: {modelInfo.MaxSequenceLength} tokens[/]");
+    if (modelInfo.VocabSize.HasValue)
+        AnsiConsole.MarkupLine($"[dim]  Vocab size: {modelInfo.VocabSize.Value:N0}[/]");
+}
+
 // ── Define 12 scenarios with LONG, messy, real-world prompts ─────────
 var scenarios = BuildScenarios();
 AnsiConsole.MarkupLine($"[bold]📋 {scenarios.Length} scenarios with paragraph-length prompts[/]");

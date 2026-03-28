@@ -117,7 +117,7 @@ var results = await index.SearchAsync("What's the temperature outside?", topK: 3
 
 **Use when:** Your prompt is verbose, multi-part, or conversational.
 
-**What it does:** Uses a small local LLM (e.g., Qwen 2.5 0.5B) to distill the prompt to a single sentence, then runs the same embedding search. The LLM extracts the core intent, improving accuracy.
+**What it does:** Uses a small local LLM (e.g., Qwen 2.5 0.5B) to distill the prompt to a single sentence, then runs the same embedding search. The LLM extracts the core intent, improving accuracy. Prompt length is auto-adjusted to the model's context window via `ModelInfo.MaxSequenceLength`.
 
 **Speed:** ~50–200ms (LLM inference + embedding)  
 **Dependencies:** Local embeddings (~90MB) + local LLM (~1GB, auto-downloaded)
@@ -172,6 +172,18 @@ For servers or agents running multiple queries, build and reuse a router instanc
 await using var router = await ToolRouter.CreateAsync(tools, chatClient);
 var results = await router.RouteAsync("Complex prompt here...", topK: 5);
 ```
+
+**Model Metadata (v0.6.1+)**
+
+When using `ElBruno.LocalLLMs` v0.6.1+, the library exposes model metadata for runtime inspection:
+
+```csharp
+using var client = await LocalChatClient.CreateAsync();
+var info = client.ModelInfo;
+Console.WriteLine($"Model: {info?.ModelName}, Context: {info?.MaxSequenceLength} tokens");
+```
+
+The zero-setup `SearchUsingLLMAsync` API uses this metadata automatically to configure prompt truncation — no manual tuning needed.
 
 ---
 
@@ -345,7 +357,7 @@ Models are downloaded over HTTPS and verified. Pin specific model versions if re
 
 ### Input Validation
 
-`ToolIndex.LoadAsync()` validates all numeric bounds. The default `MaxPromptLength` is 4,096 characters, which limits the size of input sent to the LLM. Queries exceeding this limit are truncated automatically.
+`ToolIndex.LoadAsync()` validates all numeric bounds. The default `MaxPromptLength` is 4,096 characters, which limits the size of input sent to the LLM. Queries exceeding this limit are truncated automatically. When using the zero-setup Mode 2 API (`SearchUsingLLMAsync`), the library auto-detects the local model's context window via `ModelInfo.MaxSequenceLength` and adjusts truncation to fit, ensuring prompts never exceed the model's capacity.
 
 ### Supply Chain
 

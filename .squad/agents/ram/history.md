@@ -68,3 +68,8 @@
   - Cleans up shared resources via `ToolRouter.ResetSharedResourcesAsync()` at exit
   - Added to solution file, README samples table (9 samples now), and wrote sample README.md
   - Full solution builds clean: 0 warnings, 0 errors
+- Updated README.md for ElBruno.LocalLLMs v0.6.1 upgrade (ModelInfo metadata exposure):
+   - Line 120: Added note about auto-detection of model context window via ModelInfo.MaxSequenceLength
+   - Line 360: Enhanced Input Validation section explaining auto-detection in Mode 2 API ensures prompts fit model's capacity
+   - Lines 176–188: Added new "Model Metadata (v0.6.1+)" subsection with runtime inspection example and note that SearchUsingLLMAsync uses metadata automatically
+   - Checked sample READMEs (LLMDistillationDemo, LLMDistillationMax, McpToolRouting, TokenComparison, TokenComparisonMax, etc.) — none mention 0.5.0 or MaxPromptLength, no changes needed

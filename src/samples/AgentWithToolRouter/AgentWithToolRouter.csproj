@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
-    <UserSecretsId>agent-with-tool-router-sample</UserSecretsId>
+    <UserSecretsId>elbruno-mcp-samples</UserSecretsId>
     <NoWarn>$(NoWarn);MAAI001</NoWarn>
   </PropertyGroup>
 

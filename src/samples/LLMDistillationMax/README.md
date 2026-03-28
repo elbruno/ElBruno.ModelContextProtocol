@@ -36,7 +36,7 @@ var results = await ToolRouter.SearchUsingLLMAsync(prompt, tools);
 - **.NET 8.0** or later
 - **No Azure OpenAI** — runs 100% locally
 - ~1.5 GB disk space for model downloads (first run only)
-- *Optional:* For GPU acceleration on Windows, add `Microsoft.ML.OnnxRuntimeGenAI.DirectML` package via `dotnet add package Microsoft.ML.OnnxRuntimeGenAI.DirectML` for 2–5x faster Mode 2 inference
+- *Optional:* For GPU acceleration, swap the ONNX runtime package — use `Microsoft.ML.OnnxRuntimeGenAI.DirectML` (Windows GPU) or `Microsoft.ML.OnnxRuntimeGenAI.Cuda` (NVIDIA). The default is CPU-only.
 
 ## Running
 

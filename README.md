@@ -189,15 +189,15 @@ In v0.7.1+, `MaxSequenceLength` returns the **effective runtime limit** (e.g., 1
 
 **GPU Acceleration (Optional)**
 
-The `ElBruno.LocalLLMs` library defaults to `ExecutionProvider.Auto`, which tries GPU first and falls back to CPU automatically. To enable GPU acceleration, add one ONNX runtime package to your project — **choose only one based on your hardware:**
+The samples default to the **CPU-only** ONNX runtime (`Microsoft.ML.OnnxRuntimeGenAI`), which works everywhere. GPU acceleration is optional — if your machine supports it, swap the runtime package for a potential 2–5x speedup on Mode 2 inference:
 
 | Hardware | Package | Command |
 |----------|---------|---------|
-| **Windows (any GPU vendor)** | `Microsoft.ML.OnnxRuntimeGenAI.DirectML` | `dotnet add package Microsoft.ML.OnnxRuntimeGenAI.DirectML` |
-| **NVIDIA GPU** | `Microsoft.ML.OnnxRuntimeGenAI.Cuda` | `dotnet add package Microsoft.ML.OnnxRuntimeGenAI.Cuda` |
-| **CPU only** | `Microsoft.ML.OnnxRuntimeGenAI` | `dotnet add package Microsoft.ML.OnnxRuntimeGenAI` |
+| **CPU only (default)** | `Microsoft.ML.OnnxRuntimeGenAI` | `dotnet add package Microsoft.ML.OnnxRuntimeGenAI` |
+| **Windows GPU (DirectML)** | `Microsoft.ML.OnnxRuntimeGenAI.DirectML` | `dotnet add package Microsoft.ML.OnnxRuntimeGenAI.DirectML` |
+| **NVIDIA GPU (CUDA)** | `Microsoft.ML.OnnxRuntimeGenAI.Cuda` | `dotnet add package Microsoft.ML.OnnxRuntimeGenAI.Cuda` |
 
-**Do not mix CPU and GPU variants** — add exactly one. The library will automatically detect and use the GPU runtime if available. With GPU acceleration enabled, Mode 2 inference typically runs **2–5x faster**.
+**Do not mix CPU and GPU variants** — add exactly one. Note: DirectML and CUDA require compatible hardware and drivers; if your machine doesn't support them you'll get a "Specified provider is not supported" error. When in doubt, use the CPU package.
 
 ---
 

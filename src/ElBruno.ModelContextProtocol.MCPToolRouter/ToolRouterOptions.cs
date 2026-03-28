@@ -17,40 +17,43 @@ public sealed class ToolRouterOptions
     public float MinScore { get; set; } = 0.0f;
 
     /// <summary>
-    /// When true, user prompts are distilled into single-sentence intents before semantic search.
+    /// When true, user prompts are distilled into keyword-rich action phrases via LLM before semantic search.
+    /// Uses hybrid search: combines baseline (Mode 1) results with multi-query phrase results.
     /// Requires an <see cref="Microsoft.Extensions.AI.IChatClient"/> to be provided. Default is true.
     /// </summary>
     public bool EnableDistillation { get; set; } = true;
 
     /// <summary>
     /// The system prompt used to instruct the LLM on how to distill user intent.
+    /// The default prompt extracts comma-separated action phrases with technical vocabulary,
+    /// optimized for embedding-based cosine similarity against tool descriptions.
     /// Only used when <see cref="EnableDistillation"/> is true.
     /// </summary>
-    public string DistillationSystemPrompt { get; set; } =
-        "Extract the user's primary intent in a single sentence. " +
-        "Be specific about what action or information is requested. " +
-        "Do not add any explanation or commentary — output only the distilled sentence.";
+    public string DistillationSystemPrompt { get; set; } = PromptDistiller.DefaultSystemPrompt;
 
     /// <summary>
-    /// Maximum number of output tokens for the distillation response. Default is 128.
+    /// Maximum number of output tokens for the distillation response. Default is 384.
+    /// Note: for local ONNX models this maps to max_length (total sequence length including
+    /// system + user tokens), so the actual output budget is MaxOutputTokens minus input tokens.
     /// Only used when <see cref="EnableDistillation"/> is true.
     /// </summary>
-    public int DistillationMaxOutputTokens { get; set; } = 128;
+    public int DistillationMaxOutputTokens { get; set; } = 384;
 
     /// <summary>
-    /// Temperature for the distillation LLM call. Lower values produce more deterministic output. Default is 0.1.
+    /// Temperature for the distillation LLM call. Default is 0.1 (near-deterministic with slight
+    /// diversity to avoid repetition loops on small models).
     /// Only used when <see cref="EnableDistillation"/> is true.
     /// </summary>
     public float DistillationTemperature { get; set; } = 0.1f;
 
     /// <summary>
     /// Maximum character length for prompts sent to the LLM for distillation.
-    /// Prompts exceeding this length are truncated. Default is 300 (suitable for local ONNX models).
+    /// Prompts exceeding this length are truncated. Default is 500 (suitable for local ONNX models).
     /// Increase this value when using cloud LLMs with larger context windows (e.g., 4096 or higher).
     /// Set to 0 or negative to disable truncation.
     /// Only used when <see cref="EnableDistillation"/> is true.
     /// </summary>
-    public int MaxPromptLength { get; set; } = 300;
+    public int MaxPromptLength { get; set; } = 500;
 
     /// <summary>
     /// Convenience property: sets the embedding model cache directory.

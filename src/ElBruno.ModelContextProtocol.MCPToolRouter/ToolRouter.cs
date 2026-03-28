@@ -160,18 +160,76 @@ public sealed partial class ToolRouter : IAsyncDisposable
         var effectiveMinScore = minScore ?? _options.MinScore;
 
         var searchText = userPrompt;
+        var wasDistilled = false;
 
         if (_chatClient is not null && _options.EnableDistillation)
         {
             var distillerOptions = _options.ToDistillerOptions();
             searchText = await PromptDistiller.DistillIntentAsync(_chatClient, userPrompt, distillerOptions, _logger, ct).ConfigureAwait(false);
+            wasDistilled = searchText != userPrompt;
 
             var promptPreview = userPrompt.Length > 50 ? userPrompt[..50] + "..." : userPrompt;
             var distilledPreview = searchText.Length > 80 ? searchText[..80] + "..." : searchText;
             LogMessages.DistillationCompleted(_logger, promptPreview, distilledPreview);
         }
 
-        var results = await _index.SearchAsync(searchText, effectiveTopK, effectiveMinScore, ct).ConfigureAwait(false);
+        IReadOnlyList<ToolSearchResult> results;
+
+        // Hybrid search: when distillation produces comma-separated action phrases,
+        // combine results from the original prompt (Mode 1 baseline) with individual
+        // phrase searches (multi-query). Phrase-only results are discounted to prevent
+        // marginal matches from displacing relevant baseline tools. Tools appearing in
+        // both baseline and phrase results keep their highest score without discount.
+        if (wasDistilled && searchText.Contains(','))
+        {
+            var baselineScores = new Dictionary<string, ToolSearchResult>();
+            var phraseMaxScores = new Dictionary<string, ToolSearchResult>();
+
+            // Baseline: search with original prompt (like Mode 1)
+            var baselineResults = await _index.SearchAsync(userPrompt, effectiveTopK, effectiveMinScore, ct).ConfigureAwait(false);
+            foreach (var r in baselineResults)
+                baselineScores[r.Tool.Name] = r;
+
+            // Multi-query: search each distilled phrase individually
+            var phrases = searchText.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(p => p.Length >= 3)
+                .ToArray();
+
+            foreach (var phrase in phrases)
+            {
+                var phraseResults = await _index.SearchAsync(phrase, effectiveTopK, effectiveMinScore, ct).ConfigureAwait(false);
+                foreach (var r in phraseResults)
+                {
+                    if (!phraseMaxScores.TryGetValue(r.Tool.Name, out var existing) || r.Score > existing.Score)
+                        phraseMaxScores[r.Tool.Name] = r;
+                }
+            }
+
+            // Merge: baseline tools keep full score; phrase-only tools get discounted
+            const float phraseDiscount = 0.85f;
+            var merged = new Dictionary<string, ToolSearchResult>();
+            foreach (var (name, r) in baselineScores)
+            {
+                var finalScore = r.Score;
+                if (phraseMaxScores.TryGetValue(name, out var phraseResult) && phraseResult.Score > finalScore)
+                    finalScore = phraseResult.Score;
+                merged[name] = new ToolSearchResult { Tool = r.Tool, Score = finalScore };
+            }
+            foreach (var (name, r) in phraseMaxScores)
+            {
+                if (!merged.ContainsKey(name))
+                    merged[name] = new ToolSearchResult { Tool = r.Tool, Score = r.Score * phraseDiscount };
+            }
+
+            results = merged.Values
+                .OrderByDescending(r => r.Score)
+                .Take(effectiveTopK)
+                .ToList();
+        }
+        else
+        {
+            results = await _index.SearchAsync(searchText, effectiveTopK, effectiveMinScore, ct).ConfigureAwait(false);
+        }
 
         sw.Stop();
         LogMessages.RoutingCompleted(_logger, results.Count, sw.ElapsedMilliseconds);

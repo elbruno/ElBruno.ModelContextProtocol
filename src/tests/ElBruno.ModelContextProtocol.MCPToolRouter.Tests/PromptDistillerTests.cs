@@ -376,25 +376,89 @@ public class PromptDistillerTests
     }
 
     [Fact]
-    public async Task DistillIntentAsync_With300CharDefault_TruncatesCorrectly()
+    public async Task DistillIntentAsync_With500CharDefault_TruncatesCorrectly()
     {
-        // Regression test: Verify that the 300-char default truncation works correctly
-        // on a 500+ char prompt, preventing Mode 2 failures on local ONNX models.
+        // Regression test: Verify that the 500-char default truncation works correctly
+        // on a 700+ char prompt, preventing Mode 2 failures on local ONNX models.
         
-        // Arrange — long prompt (500+ chars) with default options (MaxPromptLength=300)
+        // Arrange — long prompt (700+ chars) with default options (MaxPromptLength=500)
         var longPrompt = "Tell me about the weather forecast for the next seven days in these cities: " +
-                        new string('x', 450);
+                        new string('x', 650);
         
         var client = new FakeChatClient("weather forecast for seven days");
 
-        // Act — use default options (MaxPromptLength=300)
+        // Act — use default options (MaxPromptLength=500)
         await PromptDistiller.DistillIntentAsync(client, longPrompt);
 
-        // Assert — the LLM should receive exactly 300 chars
+        // Assert — the LLM should receive exactly 500 chars
         Assert.NotNull(client.LastMessages);
         var userMessage = client.LastMessages!.FirstOrDefault(m => m.Role == ChatRole.User);
         Assert.NotNull(userMessage);
-        Assert.Equal(300, userMessage.Text!.Length);
+        Assert.Equal(500, userMessage.Text!.Length);
+    }
+
+    #endregion
+
+    #region PostProcessDistilledOutput
+
+    [Fact]
+    public void PostProcessDistilledOutput_RemovesTrailingWordRepetitions()
+    {
+        var result = PromptDistiller.PostProcessDistilledOutput("check transactions transactions");
+        Assert.Equal("check transactions", result);
+    }
+
+    [Fact]
+    public void PostProcessDistilledOutput_DeduplicatesPhrases()
+    {
+        var result = PromptDistiller.PostProcessDistilledOutput("check health, check health");
+        Assert.Equal("check health", result);
+    }
+
+    [Fact]
+    public void PostProcessDistilledOutput_RemovesShortFragments()
+    {
+        // Fragments shorter than 3 chars are stripped
+        var result = PromptDistiller.PostProcessDistilledOutput("deploy service, ab, query database");
+        Assert.Equal("deploy service, query database", result);
+    }
+
+    [Fact]
+    public void PostProcessDistilledOutput_PreservesValidInput()
+    {
+        var input = "query database, deploy service";
+        var result = PromptDistiller.PostProcessDistilledOutput(input);
+        Assert.Equal(input, result);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void PostProcessDistilledOutput_HandlesEmptyAndNullInput(string? input)
+    {
+        var result = PromptDistiller.PostProcessDistilledOutput(input!);
+        Assert.Equal(input, result);
+    }
+
+    [Fact]
+    public void PostProcessDistilledOutput_HandlesMultipleTrailingRepetitions()
+    {
+        var result = PromptDistiller.PostProcessDistilledOutput("word word word");
+        Assert.Equal("word", result);
+    }
+
+    [Fact]
+    public async Task DistillIntentAsync_AppliesPostProcessing()
+    {
+        // Arrange — FakeChatClient returns degenerate output with repetitions and duplicates
+        var client = new FakeChatClient("check health health, deploy service service");
+
+        // Act
+        var result = await PromptDistiller.DistillIntentAsync(client, "Please check health and deploy service");
+
+        // Assert — post-processing should clean up repetitions and duplicates
+        Assert.Equal("check health, deploy service", result);
     }
 
     #endregion
@@ -402,17 +466,17 @@ public class PromptDistillerTests
     #region Options Defaults
 
     [Fact]
-    public void PromptDistillerOptions_DefaultMaxPromptLength_Is300()
+    public void PromptDistillerOptions_DefaultMaxPromptLength_Is500()
     {
         var options = new PromptDistillerOptions();
-        Assert.Equal(300, options.MaxPromptLength);
+        Assert.Equal(500, options.MaxPromptLength);
     }
 
     [Fact]
-    public void PromptDistillerOptions_DefaultMaxOutputTokens_Is128()
+    public void PromptDistillerOptions_DefaultMaxOutputTokens_Is384()
     {
         var options = new PromptDistillerOptions();
-        Assert.Equal(128, options.MaxOutputTokens);
+        Assert.Equal(384, options.MaxOutputTokens);
     }
 
     [Fact]
@@ -423,11 +487,12 @@ public class PromptDistillerTests
     }
 
     [Fact]
-    public void PromptDistillerOptions_DefaultSystemPrompt_IsNotEmpty()
+    public void PromptDistillerOptions_DefaultSystemPrompt_IsCommaSeparatedActionPhrases()
     {
         var options = new PromptDistillerOptions();
         Assert.False(string.IsNullOrWhiteSpace(options.SystemPrompt));
-        Assert.Contains("intent", options.SystemPrompt, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("comma-separated", options.SystemPrompt, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("action", options.SystemPrompt, StringComparison.OrdinalIgnoreCase);
     }
 
     #endregion

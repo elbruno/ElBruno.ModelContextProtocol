@@ -641,10 +641,10 @@ public class ToolRouterTests : IClassFixture<SharedToolRouterFixture>
     #region ToolRouterOptions Defaults and Mapping
 
     [Fact]
-    public void ToolRouterOptions_DefaultMaxPromptLength_Is300()
+    public void ToolRouterOptions_DefaultMaxPromptLength_Is500()
     {
         var options = new ToolRouterOptions();
-        Assert.Equal(300, options.MaxPromptLength);
+        Assert.Equal(500, options.MaxPromptLength);
     }
 
     [Fact]
@@ -669,10 +669,10 @@ public class ToolRouterTests : IClassFixture<SharedToolRouterFixture>
     }
 
     [Fact]
-    public void ToolRouterOptions_DefaultDistillationMaxOutputTokens_Is128()
+    public void ToolRouterOptions_DefaultDistillationMaxOutputTokens_Is384()
     {
         var options = new ToolRouterOptions();
-        Assert.Equal(128, options.DistillationMaxOutputTokens);
+        Assert.Equal(384, options.DistillationMaxOutputTokens);
     }
 
     [Fact]
@@ -680,6 +680,13 @@ public class ToolRouterTests : IClassFixture<SharedToolRouterFixture>
     {
         var options = new ToolRouterOptions();
         Assert.Equal(0.1f, options.DistillationTemperature);
+    }
+
+    [Fact]
+    public void ToolRouterOptions_DefaultDistillationSystemPrompt_ContainsCommaSeparated()
+    {
+        var options = new ToolRouterOptions();
+        Assert.Contains("comma-separated", options.DistillationSystemPrompt, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -713,11 +720,11 @@ public class ToolRouterTests : IClassFixture<SharedToolRouterFixture>
         // Act
         var distillerOptions = routerOptions.ToDistillerOptions();
 
-        // Assert — defaults are mapped (ToolRouterOptions.MaxPromptLength now aligned with PromptDistillerOptions)
+        // Assert — defaults are mapped (ToolRouterOptions and PromptDistillerOptions aligned at 500)
         Assert.Equal(routerOptions.DistillationSystemPrompt, distillerOptions.SystemPrompt);
-        Assert.Equal(128, distillerOptions.MaxOutputTokens);
+        Assert.Equal(384, distillerOptions.MaxOutputTokens);
         Assert.Equal(0.1f, distillerOptions.Temperature);
-        Assert.Equal(300, distillerOptions.MaxPromptLength);
+        Assert.Equal(500, distillerOptions.MaxPromptLength);
     }
 
     #endregion
@@ -802,12 +809,12 @@ public class ToolRouterTests : IClassFixture<SharedToolRouterFixture>
         // Test with default value
         var defaultRouterOptions = new ToolRouterOptions();
         var defaultDistillerOptions = defaultRouterOptions.ToDistillerOptions();
-        Assert.Equal(300, defaultDistillerOptions.MaxPromptLength);
+        Assert.Equal(500, defaultDistillerOptions.MaxPromptLength);
 
         // Test with custom value
-        var customRouterOptions = new ToolRouterOptions { MaxPromptLength = 500 };
+        var customRouterOptions = new ToolRouterOptions { MaxPromptLength = 800 };
         var customDistillerOptions = customRouterOptions.ToDistillerOptions();
-        Assert.Equal(500, customDistillerOptions.MaxPromptLength);
+        Assert.Equal(800, customDistillerOptions.MaxPromptLength);
     }
 
     #endregion

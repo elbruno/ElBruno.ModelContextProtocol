@@ -571,3 +571,13 @@ Completed comprehensive performance analysis as part of coordinated audit sprint
   - `.squad/log/2026-03-28T17-23-35-maxpromptlength-fix-session.md` — comprehensive session log
   - `.squad/orchestration-log/2026-03-28T17-23-35-tron-maxprompt-fix.md` — orchestration log
 - **Commit:** Part of sprint with Yori (5 regression tests) and Ram (README update)
+
+### LLMDistillationMax Refactor (completed)
+- Refactored `src/samples/LLMDistillationMax/Program.cs` from 661 lines (monolithic) into 4 clean files:
+  - `Program.cs` (261 lines) — orchestration only: banner, load tools/LLM, run comparison loop, display results
+  - `ToolDefinitions.cs` (156 lines) — static class with `Build()` returning 120+ Tool definitions across 12 domains
+  - `Scenarios.cs` (239 lines) — static class with `Build()` returning 12 scenario tuples (name, prompt, expected tools)
+  - `ScenarioResult.cs` (17 lines) — record type for scenario outcomes
+- Pure refactor: zero behavior changes, all tool definitions and scenario prompts preserved exactly
+- Build verified: `dotnet build` — 0 errors, 0 warnings
+- For top-level statement projects, extracted types use global namespace (no explicit namespace needed) for simplest access from Program.cs

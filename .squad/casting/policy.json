@@ -1,5 +1,0 @@
-{
-  "allowed_universes": ["tron"],
-  "max_capacity": 10,
-  "overflow_strategy": "diegetic_expansion"
-}

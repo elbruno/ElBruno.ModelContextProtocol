@@ -7,6 +7,6 @@
     <ProjectReference Include="..\..\ElBruno.ModelContextProtocol.MCPToolRouter\ElBruno.ModelContextProtocol.MCPToolRouter.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI.DirectML" Version="0.12.2" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI" Version="0.12.2" />
   </ItemGroup>
 </Project>

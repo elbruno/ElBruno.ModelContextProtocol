@@ -7,7 +7,7 @@
 
 ## Semantic routing for MCP tools 🔀
 
-ElBruno.ModelContextProtocol is a .NET library that makes it easy to find the right tools from Model Context Protocol (MCP) tool definitions. It uses semantic search powered by local embeddings to route prompts to the most relevant tools, enabling intelligent tool selection without external API calls.
+ElBruno.ModelContextProtocol is a .NET library that makes it easy to find the right tools from Model Context Protocol (MCP) tool definitions. It uses semantic search powered by local embeddings to route prompts to the most relevant tools, enabling intelligent tool selection without external API calls. **By routing prompts to only relevant tools before sending to an LLM, you can reduce token costs by 70–85%.**
 
 ## Packages
 
@@ -25,25 +25,14 @@ A high-performance semantic search engine for Model Context Protocol tools. MCPT
 dotnet add package ElBruno.ModelContextProtocol.MCPToolRouter
 ```
 
-## Quick Start
-
-**The simplest way:** Use a one-liner static method for instant tool routing.
+## TL;DR
 
 ```csharp
-using ElBruno.ModelContextProtocol.MCPToolRouter;
-using ModelContextProtocol.Protocol;
+// Mode 1: Embeddings only — fast, no LLM needed
+var results = await ToolRouter.SearchAsync(prompt, tools, topK: 3);
 
-var tools = new[]
-{
-    new Tool { Name = "get_weather", Description = "Get weather for a location" },
-    new Tool { Name = "send_email", Description = "Send an email message" },
-};
-
-// Mode 1: Embeddings only (fastest, no LLM)
-var results = await ToolRouter.SearchAsync("What's the weather in Tokyo?", tools, topK: 3);
-
-foreach (var r in results)
-    Console.WriteLine($"{r.Tool.Name}: {r.Score:F3}");
+// Mode 2: LLM-assisted — best for verbose/complex prompts
+var results = await ToolRouter.SearchUsingLLMAsync(prompt, tools, topK: 5);
 ```
 
 ---
@@ -133,16 +122,11 @@ var results = await index.SearchAsync("What's the temperature outside?", topK: 3
 **Speed:** ~50–200ms (LLM inference + embedding)  
 **Dependencies:** Local embeddings (~90MB) + local LLM (~1GB, auto-downloaded)
 
-**Static API (Recommended):**
+**Static API — Zero Setup (Recommended):**
 
 ```csharp
-using ElBruno.LocalLLMs;
 using ElBruno.ModelContextProtocol.MCPToolRouter;
 using ModelContextProtocol.Protocol;
-
-// Create a local LLM for prompt distillation (minimal setup)
-using var chatClient = await LocalChatClient.CreateAsync(
-    new LocalLLMsOptions { Model = KnownModels.Qwen25_05BInstruct });
 
 var tools = new Tool[] 
 {
@@ -153,11 +137,11 @@ var tools = new Tool[]
     new Tool { Name = "translate_text", Description = "Translate text between languages" }
 };
 
-// One-liner: distill + route + get results
+// One-liner: the local LLM is downloaded and managed automatically
 var results = await ToolRouter.SearchUsingLLMAsync(
     "Hey, I was thinking about my trip next week and I need to know " +
     "if it's going to rain in Tokyo. Also remind me to call the dentist.",
-    tools, chatClient, topK: 5);
+    tools, topK: 5);
 
 // The LLM distills this to something like: "Check weather in Tokyo, set reminder"
 // Then embeddings find the best matching tools
@@ -169,16 +153,24 @@ foreach (var r in results)
 //   translate_text: 0.156
 ```
 
-**Advanced: Reusable Instance (for performance-critical scenarios)**
+**Advanced: Bring Your Own IChatClient**
 
-For servers or agents running multiple queries, create a reusable router instance:
+Use any `IChatClient` (Azure OpenAI, Ollama, etc.) instead of the built-in local LLM:
 
 ```csharp
-// Build once, reuse for multiple prompts
-await using var router = await ToolRouter.CreateAsync(tools, chatClient);
+// Pass your own IChatClient for prompt distillation
+var results = await ToolRouter.SearchUsingLLMAsync(
+    "Complex prompt here...",
+    tools, chatClient, topK: 5);
+```
 
-var results = await router.RouteAsync(
-    "Complex prompt here...", topK: 5);
+**Advanced: Reusable Instance (for performance-critical scenarios)**
+
+For servers or agents running multiple queries, build and reuse a router instance:
+
+```csharp
+await using var router = await ToolRouter.CreateAsync(tools, chatClient);
+var results = await router.RouteAsync("Complex prompt here...", topK: 5);
 ```
 
 ---
@@ -310,79 +302,40 @@ Seven sample applications showcase different use cases for MCPToolRouter:
 
 ### BasicUsage
 
-The simplest way to get started. This sample creates a `ToolIndex` from MCP tool definitions, runs semantic search queries, and displays ranked results.
-
-**No Azure dependency required** — perfect for exploring the library.
+Getting started — index tools and search with semantic similarity. No Azure required.
 
 ### McpToolRouting
 
-Demonstrates local LLM-powered tool routing with **prompt distillation** and **semantic search**. Perfect for handling complex, multi-step user requests.
-
-**Features:**
-- **28 realistic MCP tools** across 7 domains (weather, email, calendar, files, web, math, code)
-- **Complex prompt scenario:** Verbose business trip planning request → distilled to 7 most relevant tools
-- **Simple prompt scenario:** Direct routing without distillation overhead
-- **Token savings analysis:** ~70-85% reduction when using routed tools vs. all tools
-- **Local LLM inference:** Uses Qwen 2.5 0.5B ONNX model, no cloud dependencies
-
-**Prerequisites:**
-- .NET 8.0+
-- ~1 GB disk space (model cache on first run)
-
-**Run:**
-```bash
-cd src/samples/McpToolRouting
-dotnet run
-```
-
-**No Azure dependency required** — ideal for exploring LLM-powered semantic routing on your local machine.
+Demonstrates local LLM-powered tool routing with prompt distillation. 28 realistic MCP tools, complex multi-part prompt handling, and token savings analysis. No Azure required.
 
 ### TokenComparison
 
-The marquee sample demonstrating the dramatic token savings when using routed tools instead of sending all tools to the LLM.
-
-The sample compares two scenarios:
-- **Standard Mode:** All 18 tools sent to the LLM (full context, high token cost)
-- **Routed Mode:** Only top-3 relevant tools sent via MCPToolRouter (filtered context, minimal tokens)
-
-**Example output:**
-```
-📊 Standard Mode (18 tools):  ~1,800 input tokens
-📊 Routed Mode (3 tools):     ~500 input tokens
-💰 Savings:                    ~72% fewer tokens!
-```
-
-**Azure OpenAI Setup:**
-
-This sample requires Azure OpenAI. Use user secrets to configure credentials:
-
-```bash
-cd src/samples/TokenComparison
-dotnet user-secrets init
-dotnet user-secrets set "AzureOpenAI:Endpoint" "https://your-resource.openai.azure.com/"
-dotnet user-secrets set "AzureOpenAI:ApiKey" "your-api-key"
-dotnet user-secrets set "AzureOpenAI:DeploymentName" "gpt-5-mini"
-```
-
-Replace:
-- `your-resource` with your Azure OpenAI resource name
-- `your-api-key` with your API key
-- Deployment name with your model (e.g., `gpt-5-mini`)
+Marquee sample showing token savings: all 18 tools (standard mode, ~1,800 tokens) vs. top-3 routed tools (~500 tokens, ~72% savings).
 
 ### TokenComparisonMax
 
-An extreme-scale demo with **120+ tool definitions** across 12 categories, showcasing the dramatic token savings at scale. Uses [Spectre.Console](https://spectreconsole.net/) for a rich terminal experience with live-updating tables and a comprehensive summary.
+Extreme-scale demo with 120+ tool definitions across 12 categories, live token tracking, and Spectre.Console rich terminal UI.
 
-**Features:**
-- 120+ realistic MCP tool definitions
-- Real-time token usage tracking with live tables
-- Final summary table with per-scenario and aggregate savings
-- Beautiful terminal UI via Spectre.Console
+### FilteredFunctionCalling
 
-**Azure OpenAI Setup:**
+End-to-end example: route tools with MCPToolRouter, send only filtered tools to Azure OpenAI, and handle tool call responses.
+
+### AgentWithToolRouter
+
+Integrates MCPToolRouter with the Microsoft Agent Framework. 11 function tools, semantic routing, and multi-turn conversation demo.
+
+### FunctionalToolsValidation
+
+Comprehensive validation with 52 real tool implementations across 8 domains (math, strings, collections, dates, conversion, encoding, statistics, hashing). Validates routed vs. standard mode with 12 test scenarios.
+
+---
+
+## Azure OpenAI Setup
+
+For samples requiring Azure OpenAI (TokenComparison, TokenComparisonMax, FilteredFunctionCalling, AgentWithToolRouter, FunctionalToolsValidation), configure credentials using user secrets:
 
 ```bash
-cd src/samples/TokenComparisonMax
+cd src/samples/{SampleName}
 dotnet user-secrets init
 dotnet user-secrets set "AzureOpenAI:Endpoint" "https://your-resource.openai.azure.com/"
 dotnet user-secrets set "AzureOpenAI:ApiKey" "your-api-key"
@@ -391,74 +344,12 @@ dotnet user-secrets set "AzureOpenAI:DeploymentName" "gpt-5-mini"
 
 Replace:
 - `your-resource` with your Azure OpenAI resource name
-- `your-api-key` with your API key
+- `your-api-key` with your API key  
 - Deployment name with your model (e.g., `gpt-5-mini`)
 
-> **💰 Cost Estimation:** The TokenComparisonMax sample calculates estimated money saved based on Azure OpenAI pricing for GPT-5-mini (as of March 2026):
->
-> | Token Type | Cost per 1M Tokens |
-> |---|---|
-> | Input | $0.25 |
-> | Output | $2.00 |
-> | Cached Input | $0.025 |
->
-> Pricing source: [Azure OpenAI Service Pricing](https://azure.microsoft.com/en-us/pricing/details/azure-openai/)
-> 
-> *Prices may vary by region and deployment type. Check the pricing page for current rates.*
+See each sample's folder for additional setup details.
 
-### FilteredFunctionCalling
-
-An end-to-end example of the real-world pattern: route tools with MCPToolRouter, send only the filtered tools to Azure OpenAI, and handle tool call responses.
-
-**Azure OpenAI Setup:**
-
-```bash
-cd src/samples/FilteredFunctionCalling
-dotnet user-secrets init
-dotnet user-secrets set "AzureOpenAI:Endpoint" "https://your-resource.openai.azure.com/"
-dotnet user-secrets set "AzureOpenAI:ApiKey" "your-api-key"
-dotnet user-secrets set "AzureOpenAI:DeploymentName" "gpt-5-mini"
-```
-
-### AgentWithToolRouter
-
-Demonstrates MCPToolRouter integrated with the [Microsoft Agent Framework](https://github.com/microsoft/agent-framework) (`Microsoft.Agents.AI.OpenAI`). The sample defines 11 function tools, uses semantic routing to filter relevant tools per prompt, and creates an `AIAgent` with only the filtered tools — showing how tool routing works with the modern agent paradigm.
-
-**Features:**
-- 11 function tools across 6 domains (weather, email, calendar, files, math, translation)
-- Semantic tool routing via MCPToolRouter before agent creation
-- Multi-turn session demo with conversation memory
-- Supports both API key and `DefaultAzureCredential` authentication
-
-**Azure OpenAI Setup:**
-
-```bash
-cd src/samples/AgentWithToolRouter
-dotnet user-secrets init
-dotnet user-secrets set "AzureOpenAI:Endpoint" "https://your-resource.openai.azure.com/"
-dotnet user-secrets set "AzureOpenAI:ApiKey" "your-api-key"
-dotnet user-secrets set "AzureOpenAI:DeploymentName" "gpt-5-mini"
-```
-
-### FunctionalToolsValidation
-
-A comprehensive validation sample with **52 real tool implementations** across 8 domains (math, strings, collections, dates, conversion, encoding, statistics, hashing). Each tool performs actual computation — no stubs. The sample runs 12 test scenarios comparing standard mode (all 52 tools) vs. routed mode (top-K filtered), validating that both produce correct results while measuring token savings.
-
-**Features:**
-- 52 fully functional tools with real C# implementations
-- 12 test scenarios with expected-result validation
-- Side-by-side comparison: standard vs. routed tool selection
-- Full tool-call execution loop with Azure OpenAI
-
-**Azure OpenAI Setup:**
-
-```bash
-cd src/samples/FunctionalToolsValidation
-dotnet user-secrets init
-dotnet user-secrets set "AzureOpenAI:Endpoint" "https://your-resource.openai.azure.com/"
-dotnet user-secrets set "AzureOpenAI:ApiKey" "your-api-key"
-dotnet user-secrets set "AzureOpenAI:DeploymentName" "gpt-5-mini"
-```
+---
 
 ## Building from Source
 

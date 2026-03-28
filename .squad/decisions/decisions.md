@@ -351,5 +351,46 @@ Decisions are reviewed and updated:
 
 ---
 
-**Last updated:** 2026-03-28T03:20:00Z  
+### Decision 3.5: User Directive — Model Default Standardization
+
+**Date:** 2026-03-28  
+**Requestor:** Bruno Capuano (via Copilot)  
+**Status:** Recorded
+
+#### Directive
+Use `gpt-5-mini` as the default model for all samples and documentation. Replace all `gpt-4o` and `gpt-4o-mini` references.
+
+#### Rationale
+Standardized model selection across all sample code and documentation for consistency and cost optimization.
+
+---
+
+### Decision 3.6: Upgrade ElBruno.LocalLLMs to v0.6.1 and Model Metadata Auto-Detection
+
+**Date:** 2026-03-28  
+**Agent:** Tron (Core Dev)  
+**Status:** Implemented ✅
+
+#### Context
+ElBruno.LocalLLMs v0.6.1 added `ModelInfo` property exposing `ModelMetadata` (MaxSequenceLength, ModelName, VocabSize). This addresses feature request in ElBruno.LocalLLMs issue #3, enabling the library to automatically adapt prompt truncation based on the underlying model's context window.
+
+#### Decision
+- Upgrade from v0.5.0 to v0.6.1
+- Auto-detect model context window and compute safe prompt truncation limits
+- Revert `PromptDistillerOptions.MaxPromptLength` default from 300 (band-aid) back to 4096 (proper default for cloud LLMs)
+- Model metadata auto-populates via `DetectedModelMaxSequenceLength` (internal) on `ToolRouterOptions`, flowing through `ToDistillerOptions()`
+
+#### Implementation
+- **Formula:** `safeChars = (MaxSequenceLength - 70 reserved) * 4 chars/token`
+- **Precedence:** Auto-computed value only takes precedence when it's *smaller* than MaxPromptLength
+
+#### Impact
+- Zero-setup `SearchUsingLLMAsync` automatically adapts to model context window
+- Users passing their own `IChatClient` can set `ModelMaxSequenceLength` on `PromptDistillerOptions` manually
+- Fully backward-compatible: existing code sees 4096 default (was 300 band-aid), no breaking changes
+- 85/85 tests pass
+
+---
+
+**Last updated:** 2026-03-28T10:49:01Z  
 **Scribe:** Automated decision merger from `.squad/decisions/inbox/` → `decisions.md`

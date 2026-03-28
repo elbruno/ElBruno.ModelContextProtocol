@@ -44,6 +44,14 @@ public sealed class ToolRouterOptions
     public float DistillationTemperature { get; set; } = 0.1f;
 
     /// <summary>
+    /// Maximum character length for prompts sent to the LLM for distillation.
+    /// Prompts exceeding this length are truncated. Default is 4096.
+    /// Set to 0 or negative to disable truncation.
+    /// Only used when <see cref="EnableDistillation"/> is true.
+    /// </summary>
+    public int MaxPromptLength { get; set; } = 4096;
+
+    /// <summary>
     /// Convenience property: sets the embedding model cache directory.
     /// Shorthand for <c>IndexOptions.EmbeddingOptions.CacheDirectory</c>.
     /// When set, this value takes precedence over any cache directory specified in
@@ -77,6 +85,7 @@ public sealed class ToolRouterOptions
     {
         SystemPrompt = DistillationSystemPrompt,
         MaxOutputTokens = DistillationMaxOutputTokens,
-        Temperature = DistillationTemperature
+        Temperature = DistillationTemperature,
+        MaxPromptLength = MaxPromptLength
     };
 }

@@ -164,7 +164,7 @@ public sealed partial class ToolRouter : IAsyncDisposable
         if (_chatClient is not null && _options.EnableDistillation)
         {
             var distillerOptions = _options.ToDistillerOptions();
-            searchText = await PromptDistiller.DistillIntentAsync(_chatClient, userPrompt, distillerOptions, ct).ConfigureAwait(false);
+            searchText = await PromptDistiller.DistillIntentAsync(_chatClient, userPrompt, distillerOptions, _logger, ct).ConfigureAwait(false);
 
             var promptPreview = userPrompt.Length > 50 ? userPrompt[..50] + "..." : userPrompt;
             var distilledPreview = searchText.Length > 80 ? searchText[..80] + "..." : searchText;

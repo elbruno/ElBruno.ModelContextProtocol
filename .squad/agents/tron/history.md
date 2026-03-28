@@ -292,3 +292,25 @@ Added static helpers and convenience APIs for embedding model management:
 **Build Verification:**
 - ✅ `dotnet build -c Release` — 0 warnings, 0 errors on both net8.0 and net10.0
 - ✅ `dotnet test -c Release --framework net8.0` — 60/60 tests pass (10 new EmbeddingModelInfo tests + 50 existing)
+
+### Simplified Static API for ToolRouter (2025-07-18)
+Replaced the old static `RouteAsync(tools, prompt, chatClient?)` one-shot method with two clear static methods:
+
+1. **`SearchAsync(userPrompt, tools, topK, minScore, options, ct)`** — Embeddings-only semantic search, no LLM needed. One-liner for simple use cases.
+2. **`SearchUsingLLMAsync(userPrompt, tools, chatClient, topK, minScore, options, ct)`** — LLM-distilled search. User provides their own `IChatClient`.
+
+**Key Design Choices:**
+- Parameter order is **prompt-first** (`userPrompt, tools`) — reads naturally: "Search for *this* in *these tools*"
+- Old static `RouteAsync` deleted outright (pre-1.0 v0.5.1, breaking changes are fine)
+- Instance API (`CreateAsync` + `RouteAsync`) unchanged for advanced users
+- No new dependencies added — library stays backend-agnostic via `IChatClient`
+- `SearchAsync` forces `EnableDistillation = false`; `SearchUsingLLMAsync` forces `EnableDistillation = true`
+
+**Test Changes:**
+- Replaced `RouteAsync_StaticOneShot_ReturnsResults` with `SearchAsync_Static_ReturnsResults`
+- Added `SearchUsingLLMAsync_Static_ReturnsResults` (new test)
+- All other tests unchanged
+
+**Build Verification:**
+- ✅ `dotnet build -c Release` — 0 warnings, 0 errors on both net8.0 and net10.0
+- ✅ `dotnet test -c Release --framework net8.0` — 61/61 tests pass (1 new test added, 1 replaced)

@@ -92,3 +92,35 @@
 - 10 tests ready in `EmbeddingModelInfoTests.cs` — will compile and pass once Tron delivers the source files
 - No existing test files modified
 - Library project continues to build cleanly
+
+### 2025-XX-XX: Tests for Simplified Static API (SearchAsync / SearchUsingLLMAsync)
+
+**Task:** Write comprehensive tests for the new static `SearchAsync` and `SearchUsingLLMAsync` methods on `ToolRouter`, replacing the deleted `RouteAsync` static convenience method.
+
+**Approach:**
+- Replaced Tron's 2 stub tests in the "Simplified Static API Tests" region with 8 comprehensive tests in two new regions
+- Used existing `FakeChatClient` pattern for LLM-distilled tests (Mode 2)
+- Each static test creates its own tools array (no shared fixture needed — static methods create/dispose their own index)
+
+**Test Categories Implemented:**
+1. **SearchAsync — Mode 1: Embeddings-only (5 tests):**
+   - `SearchAsync_ReturnsRelevantTools` — basic happy path, weather tool ranked first
+   - `SearchAsync_RespectsTopK` — verify topK=2 limits results to exactly 2
+   - `SearchAsync_WithOptions_UsesCustomSettings` — passes ToolRouterOptions with TopK=1
+   - `SearchAsync_NullPrompt_Throws` — null prompt throws ArgumentNullException
+   - `SearchAsync_NullTools_Throws` — null tools throws ArgumentNullException
+2. **SearchUsingLLMAsync — Mode 2: LLM-distilled (3 tests):**
+   - `SearchUsingLLMAsync_WithFakeChatClient_ReturnsResults` — FakeChatClient distills to weather-related
+   - `SearchUsingLLMAsync_NullChatClient_Throws` — null chatClient throws ArgumentNullException
+   - `SearchUsingLLMAsync_DistillsPrompt` — verifies distillation changes ranking (vague prompt → email tool via fake LLM)
+
+**Key Findings:**
+- Tron had already partially replaced the old `RouteAsync_StaticOneShot_ReturnsResults` with basic stubs before I started — coordinated by expanding those stubs
+- New static API parameter order changed: `SearchAsync(userPrompt, tools, ...)` vs old `RouteAsync(tools, userPrompt, ...)`
+- All 67 tests pass (29 ToolIndex + 8 PromptDistiller + 13 existing ToolRouter + 8 new static + 10 EmbeddingModelInfo - some overlap) in ~38s on net8.0
+
+**Outcomes:**
+- Full test coverage for both new static entry points
+- Old `RouteAsync` static test removed — no references to deleted API
+- Instance-based `RouteAsync` tests unchanged (that API still exists)
+- All 67 tests pass, 0 failures

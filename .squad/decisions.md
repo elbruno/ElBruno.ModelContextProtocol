@@ -267,6 +267,85 @@ private class FakeChatClient : IChatClient
 
 ---
 
+### 7. Simplified Static API for ToolRouter
+
+**Date:** 2026-03-28  
+**Author:** Flynn (Lead / Architect)  
+**Status:** Implemented
+
+#### Context
+
+ToolRouter offered only the instance API (`CreateAsync` → `RouteAsync` → `DisposeAsync`). For simple use cases, this lifecycle is verbose. Users requested explicit static one-liners to reduce boilerplate while maintaining backend-agnostic design.
+
+#### Decision
+
+Add two static convenience methods alongside the existing instance API:
+
+1. **`SearchAsync(userPrompt, tools, topK?, minScore?, options?, ct?)`** — Embeddings-only search (no LLM)
+2. **`SearchUsingLLMAsync(userPrompt, tools, chatClient, topK?, minScore?, options?, ct?)`** — LLM-distilled search (requires user-provided `IChatClient`)
+
+Parameter order: Prompt-first (reads naturally: "Search for *this* in *these tools*").
+
+Delete the old ambiguous static `RouteAsync(tools, prompt, chatClient?)` method entirely (pre-1.0 allows breaking changes).
+
+#### Rationale
+
+- **Explicit over implicit:** Two methods with clear names eliminate guessing about distillation behavior
+- **Backend-agnostic:** No hard dependency on `ElBruno.LocalLLMs`; users bring their own `IChatClient` (Azure OpenAI, Ollama, LocalLLMs, etc.)
+- **Lean NuGet package:** 6/7 existing samples don't use LocalLLMs; proportionality favors user choice over bundled 500MB LLM models
+- **Pre-release versioning:** v0.5.1 allows breaking changes per semver
+- **Natural .NET pattern:** Matches `HttpClient.GetStringAsync()` (static one-liner) vs `new HttpClient()` (reused), `Regex.IsMatch()` vs `new Regex(pattern)`
+
+#### Impact
+
+- **New public APIs:** `SearchAsync`, `SearchUsingLLMAsync` (both static)
+- **Breaking change:** Old static `RouteAsync` deleted
+- **Instance API unchanged:** `CreateAsync` + instance `RouteAsync` continue to work identically
+- **No new dependencies:** Library remains backend-agnostic
+- **Test Coverage:** 8 new tests (5 SearchAsync + 3 SearchUsingLLMAsync); all 67 tests passing
+- **Sample:** McpToolRouting demonstrates both modes
+
+#### Dependency Analysis
+
+| Factor | Assessment |
+|--------|------------|
+| **Add LocalLLMs hard dependency?** | **NO.** Pre-release risk (v0.5.0), disproportionate bloat for Mode 1 users, unnecessary coupling. |
+| **Backend agnosticity** | ✅ Preserved via `IChatClient` abstraction. Users can choose LocalLLMs, Azure OpenAI, Ollama, Anthropic, etc. |
+| **Zero-setup LocalLLMs pattern** | ✅ Documented but not bundled. Future `MCPToolRouter.LocalLLM` extension package option (defer to post-LocalLLMs v1.0). |
+
+#### Usage Examples
+
+```csharp
+// Mode 1: Pure embeddings
+var results = await ToolRouter.SearchAsync("weather", tools, topK: 3);
+
+// Mode 2: LLM-distilled (any IChatClient)
+var results = await ToolRouter.SearchUsingLLMAsync("weather", tools, chatClient, topK: 5);
+
+// Mode 2b: LocalLLMs pattern (documented, not bundled)
+using var localLLM = await LocalChatClient.CreateAsync(new LocalLLMsOptions { Model = ... });
+var results = await ToolRouter.SearchUsingLLMAsync("prompt", tools, localLLM);
+
+// Advanced: Reusable instance API (unchanged)
+await using var router = await ToolRouter.CreateAsync(tools, chatClient, options);
+var r1 = await router.RouteAsync("query 1");
+var r2 = await router.RouteAsync("query 2");  // reuses embedding index
+```
+
+---
+
+### 8. User Directive: v0.5.1 Allows Breaking Changes
+
+**Date:** 2026-03-28T01:23:52Z  
+**Author:** Bruno Capuano  
+**Status:** Captured
+
+#### Directive
+
+We are still in v0.5.1 — breaking signature changes and major architectural changes are acceptable and unblock the simplified API redesign without backward-compatibility constraints.
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

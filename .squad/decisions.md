@@ -143,6 +143,130 @@ Using `Microsoft.Extensions.AI.OpenAI` with `IChatClient` abstraction was attemp
 
 ---
 
+### 4. ToolRouter — LLM-Assisted Tool Routing with Fallback
+
+**Date:** 2026-03-28  
+**Agent:** Tron  
+**Status:** Implemented
+
+#### Context
+
+The MCPToolRouter library offered only semantic search (embeddings-based). For complex scenarios where multiple tools have similar descriptions, semantic search alone can miss the intended tool. A secondary LLM-powered verification step was needed to improve routing accuracy.
+
+#### Decision
+
+Implement `ToolRouter` as a two-stage routing system:
+1. **Stage 1 (Semantic):** Use embeddings-based search to find top-K candidates
+2. **Stage 2 (LLM Verification):** Send candidates to LLM with distilled prompt for ranking/validation
+
+The ToolRouter provides a `TryRouteAsync` method that combines both stages, with automatic fallback to semantic-only results if the LLM stage fails.
+
+#### Implementation Details
+
+- `PromptDistiller` class handles LLM-powered prompt analysis and fallback
+- `ToolRouter` orchestrates semantic search + LLM verification flow
+- `ToolRouterOptions` provides configuration (max results, retry behavior, LLM settings)
+- `EmbeddingModelInfo` / `EmbeddingModelStatus` track model lifecycle
+- FakeChatClient pattern used in tests for deterministic LLM behavior without network calls
+
+#### Impact
+
+- **New public API:** `IToolRouter`, `ToolRouter`, `PromptDistiller`, `ToolRouterOptions`
+- **Integration:** ServiceCollectionExtensions added for DI support
+- **Test Coverage:** 31 new tests (8 + 13 + 10) all passing
+- **Backward Compatibility:** Existing ToolIndex API unchanged; ToolRouter is additive
+- **Sample:** McpToolRouting demonstrates dual-mode usage
+
+#### Rationale for Two-Mode Design
+
+- **ToolIndex** alone: Fast, low-latency semantic filtering (good for high volume, latency-sensitive scenarios)
+- **ToolRouter** (ToolIndex + LLM): Higher accuracy, good for ambiguous cases where semantic similarity alone is insufficient
+- Users choose the appropriate mode based on their use case (accuracy vs. latency tradeoff)
+
+---
+
+### 5. Embedding Model Management
+
+**Date:** 2026-03-28  
+**Agent:** Tron  
+**Status:** Implemented
+
+#### Context
+
+The library needed APIs to track and manage embedding model metadata (dimensions, status, provider) as the library expands to support multiple embedding generators (local, OpenAI, Azure OpenAI, Ollama).
+
+#### Decision
+
+Add `EmbeddingModelInfo` and `EmbeddingModelStatus` classes to encapsulate model metadata:
+
+```csharp
+public class EmbeddingModelInfo
+{
+    public string Provider { get; set; }
+    public string ModelName { get; set; }
+    public int EmbeddingDimension { get; set; }
+    public EmbeddingModelStatus Status { get; set; }
+}
+
+public enum EmbeddingModelStatus
+{
+    NotInitialized = 0,
+    Loading = 1,
+    Ready = 2,
+    Failed = 3
+}
+```
+
+#### Impact
+
+- Enables future `IToolIndex.GetModelInfoAsync()` API
+- Prepares codebase for multi-model support
+- Tracks model lifecycle (loading, ready, failed states)
+- Documentation of model capabilities in API responses
+
+---
+
+### 6. FakeChatClient Test Pattern for LLM Tests
+
+**Date:** 2026-03-28  
+**Agent:** Yori  
+**Status:** Implemented
+
+#### Context
+
+`PromptDistiller` and `ToolRouter` depend on `IChatClient` for LLM operations. Tests must avoid network calls, costs, and non-determinism.
+
+#### Decision
+
+Use private `FakeChatClient` class within test files that:
+- Implements `IChatClient` with fixed responses
+- Captures messages for assertion
+- Provides deterministic behavior
+- Requires no external mocking framework
+
+```csharp
+private class FakeChatClient : IChatClient
+{
+    private readonly string _response;
+    public IList<ChatMessage>? LastMessages { get; private set; }
+    
+    public async Task<ChatCompletion> GetResponseAsync(IList<ChatMessage> messages, ...)
+    {
+        LastMessages = messages;
+        return new ChatCompletion(_response);
+    }
+}
+```
+
+#### Impact
+
+- All 8 PromptDistiller tests use FakeChatClient for fallback simulation
+- All 13 ToolRouter tests use FakeChatClient for routing logic verification
+- No external mocking dependencies (xUnit only)
+- Pattern reusable for future IChatClient-dependent tests
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

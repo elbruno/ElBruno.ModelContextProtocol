@@ -18,9 +18,9 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
           dotnet-version: |
             8.0.x
@@ -49,7 +49,7 @@ jobs:
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
       - name: Restore
-        run: dotnet restore ElBruno.ModelContextProtocol.slnx
+        run: dotnet restore ElBruno.ModelContextProtocol.slnx --locked-mode
       - name: Build
         env:
           PACKAGE_VERSION: ${{ steps.version.outputs.version }}
@@ -69,7 +69,7 @@ jobs:
           echo "📦 Package contents:"
           unzip -l ./nupkgs/*.nupkg | grep -E '(nuget_logo|README|\.dll|\.nuspec)'
       - name: NuGet login (OIDC trusted publishing)
-        uses: NuGet/login@v1
+        uses: NuGet/login@d22cc5f58ff5b88bf9bd452535b4335137e24544 # v1
         id: nuget-login
         with:
           user: ${{ secrets.NUGET_USER }}

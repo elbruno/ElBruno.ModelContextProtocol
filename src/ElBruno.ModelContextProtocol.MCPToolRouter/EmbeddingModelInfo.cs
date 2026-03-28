@@ -89,6 +89,10 @@ public static class EmbeddingModelInfo
 
         var modelName = options.ModelName ?? DefaultModelName;
 
+        // Guard against path traversal attacks via crafted model names
+        if (modelName.Contains("..") || Path.IsPathRooted(modelName))
+            throw new ArgumentException("Model name contains invalid path characters.", nameof(options));
+
         // If explicit CacheDirectory is set, combine with sanitized model name
         if (!string.IsNullOrEmpty(options.CacheDirectory))
         {

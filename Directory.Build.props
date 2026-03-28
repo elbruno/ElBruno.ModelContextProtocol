@@ -27,5 +27,8 @@
 
     <!-- Non-library projects are not packable by default -->
     <IsPackable>false</IsPackable>
+
+    <!-- Supply-chain security: generate packages.lock.json for deterministic restores -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
 </Project>

@@ -162,6 +162,7 @@ Console.WriteLine();
 
 Console.WriteLine("⏳ Loading embedding model and local LLM...");
 Console.WriteLine("   (First run downloads ~1.5 GB of models — subsequent runs are fast)");
+Console.WriteLine("   (For GPU acceleration on Windows, add Microsoft.ML.OnnxRuntimeGenAI.DirectML for 2-5x speedup)");
 Console.WriteLine();
 
 var initSw = Stopwatch.StartNew();

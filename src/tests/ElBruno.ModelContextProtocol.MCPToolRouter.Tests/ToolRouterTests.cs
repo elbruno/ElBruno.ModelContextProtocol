@@ -42,11 +42,44 @@ public class ToolRouterTests : IClassFixture<SharedToolRouterFixture>
     private class FakeChatClient : IChatClient
     {
         private readonly string _response;
+        public int CallCount { get; private set; }
+        public IList<ChatMessage>? LastMessages { get; private set; }
+
         public FakeChatClient(string response) => _response = response;
 
         public Task<ChatResponse> GetResponseAsync(
             IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken ct = default)
-            => Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, _response)));
+        {
+            CallCount++;
+            LastMessages = messages.ToList();
+            return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, _response)));
+        }
+
+        public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+            IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken ct = default)
+            => throw new NotImplementedException();
+
+        public void Dispose() { }
+        public object? GetService(Type serviceType, object? key = null) => null;
+    }
+
+    /// <summary>
+    /// A fake IChatClient that throws on every call (simulates LLM failure).
+    /// </summary>
+    private class ThrowingChatClient : IChatClient
+    {
+        private readonly Exception _exception;
+        public int CallCount { get; private set; }
+
+        public ThrowingChatClient(Exception? exception = null)
+            => _exception = exception ?? new InvalidOperationException("LLM inference failed");
+
+        public Task<ChatResponse> GetResponseAsync(
+            IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken ct = default)
+        {
+            CallCount++;
+            throw _exception;
+        }
 
         public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
             IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken ct = default)
@@ -485,6 +518,292 @@ public class ToolRouterTests : IClassFixture<SharedToolRouterFixture>
 
         Assert.NotEmpty(results);
         Assert.Equal("get_weather", results[0].Tool.Name);
+    }
+
+    #endregion
+
+    #region Mode 1 vs Mode 2: Distillation Changes Results
+
+    [Fact]
+    public async Task Mode1VsMode2_WithSuccessfulDistillation_ProduceDifferentScores()
+    {
+        // Arrange — a set of tools where the distilled intent targets a different tool than the raw prompt
+        var tools = new[]
+        {
+            new Tool { Name = "get_weather", Description = "Get current weather information for a location" },
+            new Tool { Name = "send_email", Description = "Send an email message to a recipient" },
+            new Tool { Name = "search_files", Description = "Search for files by name or content" },
+            new Tool { Name = "calculate_math", Description = "Perform mathematical calculations" },
+            new Tool { Name = "translate_text", Description = "Translate text between languages" }
+        };
+
+        // Vague prompt mentioning many topics but the LLM distills it to email-focused intent
+        var vaguePrompt = "So I had this meeting yesterday and we talked about the quarterly numbers " +
+                          "and someone mentioned the weather was terrible and I need to follow up with " +
+                          "my colleague about the project status via electronic message";
+        var chatClient = new FakeChatClient("send email to colleague about project status");
+
+        // Act
+        var mode1Results = await ToolRouter.SearchAsync(vaguePrompt, tools, topK: 5);
+        var mode2Results = await ToolRouter.SearchUsingLLMAsync(vaguePrompt, tools, chatClient, topK: 5);
+
+        // Assert — Mode 2 should use the distilled intent, producing different rankings
+        Assert.NotEmpty(mode1Results);
+        Assert.NotEmpty(mode2Results);
+
+        // The top tool should differ because Mode 2 distills to "send email" intent
+        // while Mode 1 uses the vague prompt which talks about many things
+        Assert.Equal("send_email", mode2Results[0].Tool.Name);
+
+        // Scores should be different (key assertion: proves Mode 2 isn't falling back)
+        Assert.NotEqual(mode1Results[0].Score, mode2Results[0].Score);
+    }
+
+    [Fact]
+    public async Task Mode1VsMode2_WithFailingLLM_ProduceIdenticalResults()
+    {
+        // Arrange — a throwing chat client simulates LLM failure (e.g., token overflow)
+        var tools = new[]
+        {
+            new Tool { Name = "get_weather", Description = "Get current weather information for a location" },
+            new Tool { Name = "send_email", Description = "Send an email message to a recipient" },
+            new Tool { Name = "search_files", Description = "Search for files by name or content" }
+        };
+        var prompt = "What is the weather like today in Seattle?";
+        var throwingClient = new ThrowingChatClient(
+            new InvalidOperationException("input_ids size exceeds max length"));
+
+        // Act
+        var mode1Results = await ToolRouter.SearchAsync(prompt, tools, topK: 3);
+        var mode2Results = await ToolRouter.SearchUsingLLMAsync(prompt, tools, throwingClient, topK: 3);
+
+        // Assert — when distillation fails, Mode 2 falls back to original prompt = same as Mode 1
+        Assert.Equal(mode1Results.Count, mode2Results.Count);
+        for (int i = 0; i < mode1Results.Count; i++)
+        {
+            Assert.Equal(mode1Results[i].Tool.Name, mode2Results[i].Tool.Name);
+            Assert.Equal(mode1Results[i].Score, mode2Results[i].Score);
+        }
+    }
+
+    [Fact]
+    public async Task RouteAsync_WithFailingChatClient_FallsBackToEmbeddingsOnly()
+    {
+        // Arrange — router with a throwing chat client
+        var throwingClient = new ThrowingChatClient();
+        await using var router = await ToolRouter.CreateAsync(_fixture.Tools, throwingClient);
+
+        // Act — should not throw; falls back gracefully to embeddings-only search
+        var results = await router.RouteAsync("What's the weather?");
+
+        // Assert — still returns results (using original prompt for search)
+        Assert.NotEmpty(results);
+        Assert.Equal(1, throwingClient.CallCount);
+    }
+
+    [Fact]
+    public async Task RouteAsync_DistilledPromptActuallyUsedForSearch()
+    {
+        // Arrange — FakeChatClient returns "mathematical calculations" for ANY prompt.
+        // If the distilled text is used for search, calculate_math should rank highest.
+        // If original prompt is used, get_weather should rank highest.
+        var chatClient = new FakeChatClient("perform mathematical calculations and formulas");
+        await using var router = await ToolRouter.CreateAsync(_fixture.Tools, chatClient);
+
+        // Act — original prompt is weather-related, but LLM says it's math-related
+        var results = await router.RouteAsync("What's the weather like outside today?");
+
+        // Assert — math tool should be #1 because the DISTILLED text (not original) is used for search
+        Assert.NotEmpty(results);
+        Assert.Equal("calculate_math", results[0].Tool.Name);
+    }
+
+    [Fact]
+    public async Task SearchUsingLLMAsync_WithFailingClient_ReturnsResultsGracefully()
+    {
+        // Arrange
+        var tools = new[]
+        {
+            new Tool { Name = "get_weather", Description = "Get current weather information" },
+            new Tool { Name = "send_email", Description = "Send email messages" }
+        };
+        var throwingClient = new ThrowingChatClient();
+
+        // Act — should not throw; falls back to embeddings-only search
+        var results = await ToolRouter.SearchUsingLLMAsync("weather forecast", tools, throwingClient);
+
+        // Assert — returns results even though LLM failed
+        Assert.NotEmpty(results);
+    }
+
+    #endregion
+
+    #region ToolRouterOptions Defaults and Mapping
+
+    [Fact]
+    public void ToolRouterOptions_DefaultMaxPromptLength_Is4096()
+    {
+        var options = new ToolRouterOptions();
+        Assert.Equal(4096, options.MaxPromptLength);
+    }
+
+    [Fact]
+    public void ToolRouterOptions_DefaultEnableDistillation_IsTrue()
+    {
+        var options = new ToolRouterOptions();
+        Assert.True(options.EnableDistillation);
+    }
+
+    [Fact]
+    public void ToolRouterOptions_DefaultTopK_Is5()
+    {
+        var options = new ToolRouterOptions();
+        Assert.Equal(5, options.TopK);
+    }
+
+    [Fact]
+    public void ToolRouterOptions_DefaultMinScore_IsZero()
+    {
+        var options = new ToolRouterOptions();
+        Assert.Equal(0.0f, options.MinScore);
+    }
+
+    [Fact]
+    public void ToolRouterOptions_DefaultDistillationMaxOutputTokens_Is128()
+    {
+        var options = new ToolRouterOptions();
+        Assert.Equal(128, options.DistillationMaxOutputTokens);
+    }
+
+    [Fact]
+    public void ToolRouterOptions_DefaultDistillationTemperature_Is01()
+    {
+        var options = new ToolRouterOptions();
+        Assert.Equal(0.1f, options.DistillationTemperature);
+    }
+
+    [Fact]
+    public void ToolRouterOptions_ToDistillerOptions_MapsAllProperties()
+    {
+        // Arrange
+        var routerOptions = new ToolRouterOptions
+        {
+            DistillationSystemPrompt = "Custom system prompt for tests",
+            DistillationMaxOutputTokens = 256,
+            DistillationTemperature = 0.5f,
+            MaxPromptLength = 500
+        };
+
+        // Act
+        var distillerOptions = routerOptions.ToDistillerOptions();
+
+        // Assert — all properties are mapped correctly
+        Assert.Equal("Custom system prompt for tests", distillerOptions.SystemPrompt);
+        Assert.Equal(256, distillerOptions.MaxOutputTokens);
+        Assert.Equal(0.5f, distillerOptions.Temperature);
+        Assert.Equal(500, distillerOptions.MaxPromptLength);
+    }
+
+    [Fact]
+    public void ToolRouterOptions_ToDistillerOptions_MapsDefaultValues()
+    {
+        // Arrange
+        var routerOptions = new ToolRouterOptions();
+
+        // Act
+        var distillerOptions = routerOptions.ToDistillerOptions();
+
+        // Assert — defaults are mapped (note: ToolRouterOptions.MaxPromptLength=4096 differs from PromptDistillerOptions=300)
+        Assert.Equal(routerOptions.DistillationSystemPrompt, distillerOptions.SystemPrompt);
+        Assert.Equal(128, distillerOptions.MaxOutputTokens);
+        Assert.Equal(0.1f, distillerOptions.Temperature);
+        Assert.Equal(4096, distillerOptions.MaxPromptLength);
+    }
+
+    #endregion
+
+    #region Distillation with Custom MaxPromptLength
+
+    [Fact]
+    public async Task SearchUsingLLMAsync_WithCustomMaxPromptLength_TruncatesBeforeDistillation()
+    {
+        // Arrange — create a long prompt and a FakeChatClient that captures what it receives
+        var tools = new[]
+        {
+            new Tool { Name = "get_weather", Description = "Get current weather information" },
+            new Tool { Name = "send_email", Description = "Send email messages" }
+        };
+
+        // 500-char prompt that should be truncated to 100 chars before LLM call
+        var longPrompt = "weather " + new string('x', 492);
+        Assert.Equal(500, longPrompt.Length);
+
+        var chatClient = new FakeChatClient("weather forecast");
+        var options = new ToolRouterOptions
+        {
+            MaxPromptLength = 100,
+            UseSharedResources = false
+        };
+
+        // Act
+        var results = await ToolRouter.SearchUsingLLMAsync(longPrompt, tools, chatClient, options: options);
+
+        // Assert — the chat client should have received a truncated prompt
+        Assert.NotNull(chatClient.LastMessages);
+        var userMessage = chatClient.LastMessages!.FirstOrDefault(m => m.Role == ChatRole.User);
+        Assert.NotNull(userMessage);
+        Assert.Equal(100, userMessage.Text!.Length);
+    }
+
+    [Fact]
+    public async Task RouteAsync_WithCustomMaxPromptLength_TruncatesBeforeDistillation()
+    {
+        // Arrange — router with MaxPromptLength=80
+        var chatClient = new FakeChatClient("get weather forecast");
+        var options = new ToolRouterOptions { MaxPromptLength = 80 };
+        await using var router = await ToolRouter.CreateAsync(_fixture.Tools, chatClient, options);
+
+        // A long prompt that exceeds 80 chars
+        var longPrompt = "What is the weather " + new string('z', 100);
+        Assert.True(longPrompt.Length > 80);
+
+        // Act
+        await router.RouteAsync(longPrompt);
+
+        // Assert — the chat client should have received a truncated prompt
+        Assert.NotNull(chatClient.LastMessages);
+        var userMessage = chatClient.LastMessages!.FirstOrDefault(m => m.Role == ChatRole.User);
+        Assert.NotNull(userMessage);
+        Assert.Equal(80, userMessage.Text!.Length);
+    }
+
+    #endregion
+
+    #region SearchAsync Mode 1 Does Not Distill
+
+    [Fact]
+    public async Task SearchAsync_DoesNotCallChatClient()
+    {
+        // Arrange — Mode 1 static API should never call an LLM
+        // We verify this indirectly: SearchAsync doesn't accept a chatClient parameter
+        // So we test that it produces consistent results without any LLM involvement
+        var tools = new[]
+        {
+            new Tool { Name = "get_weather", Description = "Get current weather information" },
+            new Tool { Name = "send_email", Description = "Send email messages" }
+        };
+
+        // Act — two calls with the same prompt should produce identical results
+        var results1 = await ToolRouter.SearchAsync("weather forecast", tools);
+        var results2 = await ToolRouter.SearchAsync("weather forecast", tools);
+
+        // Assert — deterministic results (no LLM randomness)
+        Assert.Equal(results1.Count, results2.Count);
+        for (int i = 0; i < results1.Count; i++)
+        {
+            Assert.Equal(results1[i].Tool.Name, results2[i].Tool.Name);
+            Assert.Equal(results1[i].Score, results2[i].Score);
+        }
     }
 
     #endregion

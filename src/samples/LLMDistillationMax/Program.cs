@@ -34,7 +34,7 @@ AnsiConsole.WriteLine();
 using var chatClient = await AnsiConsole.Status()
     .Spinner(Spinner.Known.Dots)
     .SpinnerStyle(Style.Parse("cyan"))
-    .StartAsync("Loading local LLM for prompt distillation (~1.5 GB first run)...", async ctx =>
+    .StartAsync("Loading local LLM for prompt distillation (~1.5 GB first run). For GPU acceleration on Windows, add Microsoft.ML.OnnxRuntimeGenAI.DirectML...", async ctx =>
     {
         return await ElBruno.LocalLLMs.LocalChatClient.CreateAsync(
             new ElBruno.LocalLLMs.LocalLLMsOptions());

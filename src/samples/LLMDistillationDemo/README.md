@@ -37,6 +37,7 @@ For each scenario, the demo outputs:
 - **.NET 8.0 or higher**
 - **~1.5 GB disk space** — first run downloads the embedding model (~90 MB) and local LLM (~500 MB)
 - No API keys required — everything runs locally
+- *Optional:* For GPU acceleration on Windows, also add `Microsoft.ML.OnnxRuntimeGenAI.DirectML` package via `dotnet add package Microsoft.ML.OnnxRuntimeGenAI.DirectML` for 2–5x faster inference
 
 ## Running the Sample
 

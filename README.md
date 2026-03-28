@@ -119,7 +119,7 @@ var results = await index.SearchAsync("What's the temperature outside?", topK: 3
 
 **What it does:** Uses a small local LLM (e.g., Qwen 2.5 0.5B) to distill the prompt to a single sentence, then runs the same embedding search. The LLM extracts the core intent, improving accuracy.
 
-**Speed:** ~50–200ms (LLM inference + embedding)  
+**Speed:** ~50–200ms (LLM inference + embedding) — faster on GPU  
 **Dependencies:** Local embeddings (~90MB) + local LLM (~1GB, auto-downloaded)
 
 **Static API — Zero Setup (Recommended):**
@@ -187,6 +187,18 @@ Console.WriteLine($"  Config Max Sequence Length: {info?.ConfigMaxSequenceLength
 
 In v0.7.1+, `MaxSequenceLength` returns the **effective runtime limit** (e.g., 128 tokens for Phi-3.5 mini ONNX), while `ConfigMaxSequenceLength` preserves the raw config value (e.g., 131072). This ensures metadata accuracy for proper input validation and context window management. Mode 2 (`SearchUsingLLMAsync`) uses these values automatically to validate prompts fit within the model's capacity.
 
+**GPU Acceleration (Optional)**
+
+The `ElBruno.LocalLLMs` library defaults to `ExecutionProvider.Auto`, which tries GPU first and falls back to CPU automatically. To enable GPU acceleration, add one ONNX runtime package to your project — **choose only one based on your hardware:**
+
+| Hardware | Package | Command |
+|----------|---------|---------|
+| **Windows (any GPU vendor)** | `Microsoft.ML.OnnxRuntimeGenAI.DirectML` | `dotnet add package Microsoft.ML.OnnxRuntimeGenAI.DirectML` |
+| **NVIDIA GPU** | `Microsoft.ML.OnnxRuntimeGenAI.Cuda` | `dotnet add package Microsoft.ML.OnnxRuntimeGenAI.Cuda` |
+| **CPU only** | `Microsoft.ML.OnnxRuntimeGenAI` | `dotnet add package Microsoft.ML.OnnxRuntimeGenAI` |
+
+**Do not mix CPU and GPU variants** — add exactly one. The library will automatically detect and use the GPU runtime if available. With GPU acceleration enabled, Mode 2 inference typically runs **2–5x faster**.
+
 ---
 
 ### When to Use Which Mode
@@ -194,8 +206,8 @@ In v0.7.1+, `MaxSequenceLength` returns the **effective runtime limit** (e.g., 1
 | | **Mode 1: Embeddings** | **Mode 2: LLM-Assisted** |
 |---|---|---|
 | **Best for** | Clear, single-intent prompts | Verbose, multi-part, conversational prompts |
-| **Speed** | ~1–5ms per query | ~50–200ms (includes LLM inference) |
-| **Dependencies** | Local embeddings only (~90MB) | Local embeddings + local LLM (~1GB) |
+| **Speed** | ~1–5ms per query | ~50–200ms on CPU (~20–100ms with GPU) |
+| **Dependencies** | Local embeddings only (~90MB) | Local embeddings + local LLM (~1GB) + optional GPU runtime |
 | **Static API** | `ToolRouter.SearchAsync()` | `ToolRouter.SearchUsingLLMAsync()` |
 | **Instance API** | `ToolIndex.CreateAsync()` + `SearchAsync()` | `ToolRouter.CreateAsync()` + `RouteAsync()` |
 | **Example prompt** | "Send an email" | "I need to email Alice about the deadline and check the weather" |

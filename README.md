@@ -286,6 +286,73 @@ IEmbeddingGenerator<string, Embedding<float>> myGenerator = /* your provider */;
 await using var index = await ToolIndex.CreateAsync(tools, myGenerator, options);
 ```
 
+---
+
+## ⚡ Performance Guide
+
+MCPToolRouter is designed for both one-off queries and high-throughput scenarios. Understand the trade-offs to choose the right API for your use case.
+
+### Static vs Instance API
+
+The **static API** (`SearchAsync`, `SearchUsingLLMAsync`) is ideal for simple scripts and one-off calls — just pass your prompt and tools, get results immediately. Under the hood, static methods now reuse shared singleton ONNX sessions by default (`UseSharedResources = true`), so repeated static calls are **much faster** than before.
+
+The **instance API** (`ToolIndex.CreateAsync` + `SearchAsync`, or `ToolRouter.CreateAsync` + `RouteAsync`) is optimized for servers, agents, and batch operations where you make many queries. By reusing the same index, you avoid re-embedding tools and re-initializing the LLM — this provides **15–35x speedup** on subsequent queries compared to creating a new index each time.
+
+**Pro tip:** For cleanup, call `await ToolRouter.ResetSharedResourcesAsync()` to release singleton resources when your application shuts down.
+
+### Query Cache
+
+Set `QueryCacheSize > 0` in `ToolIndexOptions` to cache query embeddings. Identical prompts skip embedding generation entirely (~0ms vs ~10–20ms per query):
+
+```csharp
+var options = new ToolIndexOptions { QueryCacheSize = 20 };
+await using var index = await ToolIndex.CreateAsync(tools, options);
+
+var result1 = await index.SearchAsync("weather in Tokyo");     // ~10ms: embedding generated
+var result2 = await index.SearchAsync("weather in Tokyo");     // ~0ms: cache hit
+```
+
+The cache is automatically cleared when tools are added or removed.
+
+### Quick Recommendation
+
+| Scenario | Recommended API | Why |
+|----------|----------------|-----|
+| CLI tool, one-off query | `ToolRouter.SearchAsync()` | Simplest, shared resources handle perf |
+| Server/agent, many queries | `ToolRouter.CreateAsync()` + `RouteAsync()` | Full control, best performance |
+| Verbose or complex prompts | `ToolRouter.SearchUsingLLMAsync()` | LLM distills intent first |
+
+---
+
+## 🔒 Security Considerations
+
+MCPToolRouter runs entirely locally — models and searches never leave your machine. However, a few security practices are worth considering:
+
+### Prompt Injection
+
+Mode 2 uses a local LLM for prompt distillation. While the LLM cannot execute tools directly, adversarial prompts could theoretically influence which tools are selected. Validate tool selection downstream in your application before executing any tool calls. Example: if a tool requires authentication or permission checks, enforce those before execution.
+
+### Model Downloads
+
+Embedding and LLM models are downloaded automatically on first use. Use the `EmbeddingModelCacheDirectory` option to control where models are stored:
+
+```csharp
+var options = new ToolIndexOptions { EmbeddingModelCacheDirectory = "/secure/models" };
+await using var index = await ToolIndex.CreateAsync(tools, options);
+```
+
+Models are downloaded over HTTPS and verified. Pin specific model versions if reproducibility is critical.
+
+### Input Validation
+
+`ToolIndex.LoadAsync()` validates all numeric bounds. The default `MaxPromptLength` is 4,096 characters, which limits the size of input sent to the LLM. Queries exceeding this limit are truncated automatically.
+
+### Supply Chain
+
+Build reproducibility is ensured via **NuGet lock files** (`.csproj` with `RestorePackagesWithLockFile=true`). Lock files pin exact package versions, preventing unexpected updates that could affect behavior or introduce vulnerabilities.
+
+---
+
 ## Samples
 
 Eight sample applications showcase different use cases for MCPToolRouter:

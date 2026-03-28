@@ -503,3 +503,22 @@ Completed comprehensive performance analysis as part of coordinated audit sprint
   - `.squad/log/2026-03-28T16-49-19-directml-gpu.md` — brief session log
   - `.squad/orchestration-log/2026-03-28T16-49-19-tron.md` — detailed orchestration log
   - `.squad/orchestration-log/2026-03-28T16-49-19-ram.md` — RAM orchestration log
+
+### Revert DirectML GPU Runtime to CPU-Only (2026-03-28T16:54:12Z)
+- **Reason:** DirectML package fails on Bruno's machine with "Specified provider is not supported" error
+- **Root cause identified:** ElBruno.LocalLLMs `ExecutionProvider.Auto` throws hard error instead of gracefully falling back to CPU when DirectML is unavailable
+- **Reverted packages:**
+  - `src/samples/LLMDistillationMax/LLMDistillationMax.csproj`: DirectML v0.12.2 → CPU v0.12.2
+  - `src/samples/LLMDistillationDemo/LLMDistillationDemo.csproj`: DirectML v0.12.2 → CPU v0.12.2
+- **Lock files regenerated:** packages.lock.json for both projects (net8.0 and net10.0)
+- **Documentation updated:**
+  - Root README.md: CPU as default, GPU as optional with package guidance
+  - Sample READMEs (LLMDistillationMax, LLMDistillationDemo): Added optional GPU acceleration sections
+  - Program.cs: Updated status messages to reflect CPU runtime
+- **Upstream issue created:** Coordinator filed elbruno/ElBruno.LocalLLMs#7 to fix ExecutionProvider.Auto fallback behavior
+- **Decision §12 merged:** "Revert DirectML GPU Runtime to CPU-Only" added to `.squad/decisions.md`
+- **Build:** Clean build, 115 tests pass
+- **Next:** Monitor upstream issue; re-enable DirectML once fallback fix is implemented
+- **Session artifacts:**
+  - `.squad/log/2026-03-28T16-54-12-directml-revert.md` — session log
+  - `.squad/orchestration-log/2026-03-28T16-54-12-tron-revert-directml.md` — orchestration log

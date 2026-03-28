@@ -45,11 +45,12 @@ public sealed class ToolRouterOptions
 
     /// <summary>
     /// Maximum character length for prompts sent to the LLM for distillation.
-    /// Prompts exceeding this length are truncated. Default is 4096.
+    /// Prompts exceeding this length are truncated. Default is 300 (suitable for local ONNX models).
+    /// Increase this value when using cloud LLMs with larger context windows (e.g., 4096 or higher).
     /// Set to 0 or negative to disable truncation.
     /// Only used when <see cref="EnableDistillation"/> is true.
     /// </summary>
-    public int MaxPromptLength { get; set; } = 4096;
+    public int MaxPromptLength { get; set; } = 300;
 
     /// <summary>
     /// Convenience property: sets the embedding model cache directory.

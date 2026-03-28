@@ -641,10 +641,10 @@ public class ToolRouterTests : IClassFixture<SharedToolRouterFixture>
     #region ToolRouterOptions Defaults and Mapping
 
     [Fact]
-    public void ToolRouterOptions_DefaultMaxPromptLength_Is4096()
+    public void ToolRouterOptions_DefaultMaxPromptLength_Is300()
     {
         var options = new ToolRouterOptions();
-        Assert.Equal(4096, options.MaxPromptLength);
+        Assert.Equal(300, options.MaxPromptLength);
     }
 
     [Fact]
@@ -713,11 +713,11 @@ public class ToolRouterTests : IClassFixture<SharedToolRouterFixture>
         // Act
         var distillerOptions = routerOptions.ToDistillerOptions();
 
-        // Assert — defaults are mapped (note: ToolRouterOptions.MaxPromptLength=4096 differs from PromptDistillerOptions=300)
+        // Assert — defaults are mapped (ToolRouterOptions.MaxPromptLength now aligned with PromptDistillerOptions)
         Assert.Equal(routerOptions.DistillationSystemPrompt, distillerOptions.SystemPrompt);
         Assert.Equal(128, distillerOptions.MaxOutputTokens);
         Assert.Equal(0.1f, distillerOptions.Temperature);
-        Assert.Equal(4096, distillerOptions.MaxPromptLength);
+        Assert.Equal(300, distillerOptions.MaxPromptLength);
     }
 
     #endregion
@@ -775,6 +775,39 @@ public class ToolRouterTests : IClassFixture<SharedToolRouterFixture>
         var userMessage = chatClient.LastMessages!.FirstOrDefault(m => m.Role == ChatRole.User);
         Assert.NotNull(userMessage);
         Assert.Equal(80, userMessage.Text!.Length);
+    }
+
+    #endregion
+
+    #region MaxPromptLength Regression Tests
+
+    [Fact]
+    public void ToolRouterOptions_MaxPromptLength_DefaultAlignedWithDistillerOptions()
+    {
+        // This test prevents the bug where ToolRouterOptions.MaxPromptLength defaulted to 4096
+        // while PromptDistillerOptions.MaxPromptLength defaulted to 300, causing Mode 2
+        // (LLM-distilled) to produce identical results to Mode 1 (embeddings-only) because
+        // the local ONNX model silently failed on long prompts and fell back to the original.
+        var routerOptions = new ToolRouterOptions();
+        var distillerOptions = new PromptDistillerOptions();
+        Assert.Equal(distillerOptions.MaxPromptLength, routerOptions.MaxPromptLength);
+    }
+
+    [Fact]
+    public void ToDistillerOptions_MaxPromptLength_MappedCorrectly()
+    {
+        // Verify that ToDistillerOptions() maps MaxPromptLength from ToolRouterOptions
+        // to PromptDistillerOptions correctly, both with default and custom values.
+
+        // Test with default value
+        var defaultRouterOptions = new ToolRouterOptions();
+        var defaultDistillerOptions = defaultRouterOptions.ToDistillerOptions();
+        Assert.Equal(300, defaultDistillerOptions.MaxPromptLength);
+
+        // Test with custom value
+        var customRouterOptions = new ToolRouterOptions { MaxPromptLength = 500 };
+        var customDistillerOptions = customRouterOptions.ToDistillerOptions();
+        Assert.Equal(500, customDistillerOptions.MaxPromptLength);
     }
 
     #endregion

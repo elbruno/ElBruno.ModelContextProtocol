@@ -371,7 +371,13 @@ Models are downloaded over HTTPS and verified. Pin specific model versions if re
 
 ### Input Validation
 
-`ToolIndex.LoadAsync()` validates all numeric bounds. The default `MaxPromptLength` is 300 characters for `PromptDistillerOptions` (safe for local ONNX models with small context windows) and 4,096 characters for `ToolRouterOptions` (suitable for cloud LLMs). Prompts exceeding this limit are truncated automatically. A try-catch safety net ensures graceful fallback if the LLM encounters any errors. With `ElBruno.LocalLLMs` v0.7.1+, metadata accuracy is ensured via the dual `MaxSequenceLength` / `ConfigMaxSequenceLength` properties, enabling reliable context window management.
+`ToolIndex.LoadAsync()` validates all numeric bounds. The default `MaxPromptLength` is 300 characters for both `PromptDistillerOptions` and `ToolRouterOptions` (optimized for local ONNX models with small context windows). If targeting cloud LLMs like Azure OpenAI or Ollama, increase this value:
+
+```csharp
+var options = new ToolRouterOptions { MaxPromptLength = 2000 };
+```
+
+Prompts exceeding the configured limit are truncated automatically. A try-catch safety net ensures graceful fallback if the LLM encounters any errors. With `ElBruno.LocalLLMs` v0.7.1+, metadata accuracy is ensured via the dual `MaxSequenceLength` / `ConfigMaxSequenceLength` properties, enabling reliable context window management.
 
 ### Supply Chain
 

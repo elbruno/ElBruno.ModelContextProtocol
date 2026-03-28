@@ -349,6 +349,56 @@ public class PromptDistillerTests
 
     #endregion
 
+    #region MaxPromptLength Regression Tests
+
+    [Fact]
+    public async Task DistillIntentAsync_WithLongPrompt_TruncatesBeforeSendingToLLM()
+    {
+        // Regression test: Verify that when a prompt exceeds MaxPromptLength,
+        // the LLM receives a truncated version, preventing silent failures on
+        // local ONNX models with limited context windows.
+        
+        // Arrange — 600-char prompt with MaxPromptLength=200
+        var longPrompt = new string('A', 200) + " weather forecast " + new string('B', 382);
+        Assert.Equal(600, longPrompt.Length);
+        
+        var client = new FakeChatClient("weather forecast");
+        var options = new PromptDistillerOptions { MaxPromptLength = 200 };
+
+        // Act
+        await PromptDistiller.DistillIntentAsync(client, longPrompt, options);
+
+        // Assert — the LLM should receive exactly 200 chars
+        Assert.NotNull(client.LastMessages);
+        var userMessage = client.LastMessages!.FirstOrDefault(m => m.Role == ChatRole.User);
+        Assert.NotNull(userMessage);
+        Assert.Equal(200, userMessage.Text!.Length);
+    }
+
+    [Fact]
+    public async Task DistillIntentAsync_With300CharDefault_TruncatesCorrectly()
+    {
+        // Regression test: Verify that the 300-char default truncation works correctly
+        // on a 500+ char prompt, preventing Mode 2 failures on local ONNX models.
+        
+        // Arrange — long prompt (500+ chars) with default options (MaxPromptLength=300)
+        var longPrompt = "Tell me about the weather forecast for the next seven days in these cities: " +
+                        new string('x', 450);
+        
+        var client = new FakeChatClient("weather forecast for seven days");
+
+        // Act — use default options (MaxPromptLength=300)
+        await PromptDistiller.DistillIntentAsync(client, longPrompt);
+
+        // Assert — the LLM should receive exactly 300 chars
+        Assert.NotNull(client.LastMessages);
+        var userMessage = client.LastMessages!.FirstOrDefault(m => m.Role == ChatRole.User);
+        Assert.NotNull(userMessage);
+        Assert.Equal(300, userMessage.Text!.Length);
+    }
+
+    #endregion
+
     #region Options Defaults
 
     [Fact]

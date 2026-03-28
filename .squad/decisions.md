@@ -553,6 +553,76 @@ Revert all auto-detection logic. Restore the conservative 300-character default 
 
 ---
 
+### 12. Revert DirectML GPU Runtime to CPU-Only
+
+**Date:** 2026-03-28  
+**Author:** Tron (Core Developer)  
+**Status:** ✅ Implemented
+
+#### Context
+
+Decision #10 (2026-03-28T16:49:19Z) migrated sample projects `LLMDistillationMax` and `LLMDistillationDemo` from CPU-only ONNX runtime to DirectML GPU acceleration. However, on Bruno's machine, the DirectML package fails at runtime with:
+
+> "Specified provider is not supported"
+
+Testing revealed that `ExecutionProvider.Auto` in ElBruno.LocalLLMs (the underlying fallback mechanism) does not gracefully degrade — instead it throws a hard error when DirectML is unavailable on unsupported hardware.
+
+#### Root Cause
+
+The ElBruno.LocalLLMs library's `ExecutionProvider.Auto` attempts to initialize DirectML first but fails hard instead of falling back to CPU when:
+- GPU driver doesn't support DirectML
+- Hardware doesn't have necessary GPU capabilities
+- DirectML runtime is not installed
+
+This breaks the contract of "Auto" detection and makes GPU acceleration unsafe for samples that should "just work" everywhere.
+
+#### Decision
+
+**Reverted sample projects to CPU-only runtime:**
+- Replaced `Microsoft.ML.OnnxRuntimeGenAI.DirectML` v0.12.2 with `Microsoft.ML.OnnxRuntimeGenAI` v0.12.2
+- Changed projects:
+  - `src/samples/LLMDistillationMax/LLMDistillationMax.csproj`
+  - `src/samples/LLMDistillationDemo/LLMDistillationDemo.csproj`
+
+**Updated documentation:**
+- Root README.md: CPU presented as default, GPU as optional with package guidance
+- Sample READMEs (LLMDistillationMax, LLMDistillationDemo): Added optional GPU acceleration section
+- Program.cs: Updated status messages to clarify CPU runtime with GPU as optional
+
+**Created upstream issue:**
+- GitHub issue: elbruno/ElBruno.LocalLLMs#7 — "ExecutionProvider.Auto throws hard error instead of falling back to CPU when DirectML is unsupported"
+- Action: Coordinate with ElBruno.LocalLLMs team to implement graceful fallback
+
+#### Rationale
+
+- **Samples must "just work":** CPU runtime is the safe default for sample applications
+- **Graceful degradation:** GPU acceleration is valuable but should never cause hard failures
+- **Clear documentation:** All three runtime options (CPU, DirectML, CUDA) documented in reference tables
+- **Upstream fix:** Root cause of hard error should be fixed in ElBruno.LocalLLMs, not worked around in samples
+
+#### Impact
+
+- ✅ **Compatibility:** Samples now run on all machines (no DirectML requirement)
+- ✅ **Build:** Solution builds cleanly (net8.0 + net10.0)
+- ✅ **Tests:** All 115 unit tests pass
+- ✅ **Documentation:** GPU acceleration still available as opt-in with clear guidance
+
+#### Trade-offs
+
+- **Pros:**
+  - Samples work on all hardware (no GPU requirement)
+  - Documentation preserves GPU acceleration as option
+  - Upstream issue filed to fix root cause in ElBruno.LocalLLMs
+- **Cons:**
+  - GPU acceleration deferred until upstream fallback fix is implemented
+  - Users wanting GPU must explicitly swap package (documented in README)
+
+#### Future Action
+
+Once ElBruno.LocalLLMs#7 is resolved with proper `ExecutionProvider.Auto` fallback, Decision #10 can be re-implemented with confidence that DirectML failures are handled gracefully.
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

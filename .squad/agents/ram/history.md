@@ -107,3 +107,25 @@
   - `.squad/log/2026-03-28T16-49-19-directml-gpu.md` — brief session log
   - `.squad/orchestration-log/2026-03-28T16-49-19-tron.md` — detailed Tron orchestration log
   - `.squad/orchestration-log/2026-03-28T16-49-19-ram.md` — detailed Ram orchestration log
+
+### DirectML Revert Coordination (2026-03-28T16:54:12Z)
+- **Context:** DirectML GPU acceleration (Decision §10) was reverted due to hard error on Bruno's machine when DirectML is unsupported
+- **Root cause:** ElBruno.LocalLLMs `ExecutionProvider.Auto` throws hard error instead of gracefully falling back to CPU
+- **Upstream issue:** Coordinator filed elbruno/ElBruno.LocalLLMs#7 to fix fallback behavior
+- **Documentation updates by Tron:** CPU as default, GPU as optional in all README and Program.cs
+- **Decision §12 merged:** "Revert DirectML GPU Runtime to CPU-Only" documents decision, rationale, and future action plan
+- **Impact:** Samples now "just work" on all hardware; GPU acceleration preserved as opt-in with clear guidance
+- **Session artifacts:**
+  - `.squad/log/2026-03-28T16-54-12-directml-revert.md` — session log
+  - `.squad/orchestration-log/2026-03-28T16-54-12-tron-revert-directml.md` — Tron orchestration log
+
+### MaxPromptLength Default Fix Documentation (2026-03-28T17:00:00Z)
+- **Bug fixed by Tron:** Mode 1 (embeddings-only) and Mode 2 (LLM-distilled) produced identical results due to mismatched MaxPromptLength defaults: \ToolRouterOptions\ defaulted to 4096 while \PromptDistillerOptions\ defaulted to 300. Local ONNX models silently failed on long prompts, falling back to original prompt (Mode 2 = Mode 1).
+- **Root cause:** Both options now default to 300 characters, optimized for local ONNX models with constrained context windows.
+- **Documentation updates by Ram:**
+  - Main README.md: Updated "Input Validation" section (lines 374–382) to reflect new unified 300-character default for both \PromptDistillerOptions\ and \ToolRouterOptions\
+  - Added code example showing how to increase MaxPromptLength for cloud LLMs: \
+ew ToolRouterOptions { MaxPromptLength = 2000 }\
+  - Clarified that Mode 2 now properly distills with smaller context constraints, distinguishing it from Mode 1
+  - Verified LLMDistillationDemo and LLMDistillationMax sample READMEs — no MaxPromptLength mentions, no updates required
+- **Testing:** Solution builds clean, documentation is now accurate and reflects the fix

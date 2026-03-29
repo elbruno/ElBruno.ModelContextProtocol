@@ -581,3 +581,13 @@ Completed comprehensive performance analysis as part of coordinated audit sprint
 - Pure refactor: zero behavior changes, all tool definitions and scenario prompts preserved exactly
 - Build verified: `dotnet build` — 0 errors, 0 warnings
 - For top-level statement projects, extracted types use global namespace (no explicit namespace needed) for simplest access from Program.cs
+
+### GPU Upgrade: ElBruno.LocalLLMs 0.7.1 → 0.7.2 + DirectML (completed)
+- Upgraded ElBruno.LocalLLMs from 0.7.1 to 0.7.2 (fixes ExecutionProvider.Auto GPU fallback, issue #7)
+- Switched both LLM distillation samples from CPU-only `Microsoft.ML.OnnxRuntimeGenAI` to `Microsoft.ML.OnnxRuntimeGenAI.DirectML` v0.12.2
+- **GPU outcome:** DirectML package loaded without hard errors. On this machine, `ExecutionProvider.Auto` gracefully fell back to CPU (no DirectML GPU available). No crashes — the v0.7.2 fix works.
+- **Inference times (CPU fallback):** LLM distillation ~3.4–7.5 seconds per scenario. Embedding search ~4.5 seconds per scenario at 120 tools. Similar to pre-upgrade (expected, since still on CPU).
+- **LLMDistillationMax results:** Mode 2 won 3/12 scenarios, tied 8, Mode 1 won 1. Hit rate: Mode 2 55.0% vs Mode 1 51.7%. Distilled outputs were focused and reasonable.
+- **LLMDistillationDemo results:** Mode 2 won 2/7, tied 3, Mode 1 won 2. Distillation quality good — extracted clear intent phrases from verbose prompts.
+- All 129 unit tests passed after upgrade
+- 16 files changed: 3 csproj edits, 2 README updates, 11 lock file regenerations

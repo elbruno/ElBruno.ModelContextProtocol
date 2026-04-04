@@ -1,9 +1,11 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src\ElBruno.ModelContextProtocol.MCPToolRouter\ElBruno.ModelContextProtocol.MCPToolRouter.csproj" />
+    <Project Path="src\ElBruno.ModelContextProtocol.EmbeddingServer\ElBruno.ModelContextProtocol.EmbeddingServer.csproj" />
   </Folder>
   <Folder Name="/src/tests/">
     <Project Path="src\tests\ElBruno.ModelContextProtocol.MCPToolRouter.Tests\ElBruno.ModelContextProtocol.MCPToolRouter.Tests.csproj" />
+    <Project Path="src\tests\ElBruno.ModelContextProtocol.EmbeddingServer.Tests\ElBruno.ModelContextProtocol.EmbeddingServer.Tests.csproj" />
   </Folder>
   <Folder Name="/src/samples/">
     <Project Path="src\samples\BasicUsage\BasicUsage.csproj" />

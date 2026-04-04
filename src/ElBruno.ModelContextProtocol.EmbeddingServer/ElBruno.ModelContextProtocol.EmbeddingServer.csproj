@@ -6,9 +6,9 @@
 
     <!-- NuGet Package Metadata -->
     <IsPackable>true</IsPackable>
-    <PackageId>ElBruno.ModelContextProtocol.MCPToolRouter</PackageId>
-    <Description>Semantic routing for Model Context Protocol (MCP) tool definitions using local embeddings. Indexes MCP tools and returns the most relevant tools for a given prompt via vector search.</Description>
-    <PackageTags>mcp;model-context-protocol;embeddings;vector-search;semantic-search;ai;tools;llm;token-optimization</PackageTags>
+    <PackageId>ElBruno.ModelContextProtocol.EmbeddingServer</PackageId>
+    <Description>MCP server tools for local embedding generation and semantic search. Exposes embed_text, search_embeddings, get_embedding_model_status, and manage_index as MCP tool endpoints using ElBruno.LocalEmbeddings.</Description>
+    <PackageTags>mcp;model-context-protocol;embeddings;vector-search;semantic-search;ai;tools;llm;mcp-server;onnx</PackageTags>
     <PackageProjectUrl>https://github.com/elbruno/ElBruno.ModelContextProtocol</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageReleaseNotes>https://github.com/elbruno/ElBruno.ModelContextProtocol/releases</PackageReleaseNotes>
@@ -23,8 +23,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="ElBruno.ModelContextProtocol.MCPToolRouter.Tests" />
-    <InternalsVisibleTo Include="ElBruno.ModelContextProtocol.EmbeddingServer" />
+    <InternalsVisibleTo Include="ElBruno.ModelContextProtocol.EmbeddingServer.Tests" />
   </ItemGroup>
 
   <ItemGroup>
@@ -34,12 +33,12 @@
 
   <ItemGroup>
     <PackageReference Include="ElBruno.LocalEmbeddings" Version="1.1.5" />
-    <PackageReference Include="ElBruno.LocalLLMs" Version="0.7.2" />
     <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="10.4.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.5" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.3" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.3" />
     <PackageReference Include="ModelContextProtocol.Core" Version="1.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ElBruno.ModelContextProtocol.MCPToolRouter\ElBruno.ModelContextProtocol.MCPToolRouter.csproj" />
   </ItemGroup>
 
 </Project>

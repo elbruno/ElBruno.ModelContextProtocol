@@ -489,5 +489,62 @@ Implemented a multi-layered regression test strategy to prevent recurrence:
 
 ---
 
-**Last updated:** 2026-03-28T17:23:35Z  
+## Phase 4: Semantic Routing & Embedding Server (2026-04-04)
+
+### Decision 4.1: Include Parameter Schemas in Tool Embedding Text
+
+**Date:** 2026-04-04  
+**Agent:** Tron (Core Dev)  
+**Issue:** #3  
+**PR:** #5  
+**Status:** Implemented ✅
+
+#### Context
+ToolIndex was embedding tools using only `"{Name}: {Description}"`, ignoring parameter schemas. This reduced semantic routing accuracy when tools have similar names but different parameter signatures (e.g., many math tools with identical descriptions but different input schemas).
+
+#### Decision
+1. **New placeholders**: `{Parameters}` (human-readable parameter summary) and `{InputSchema}` (raw JSON schema) added to `FormatEmbeddingText`.
+2. **New default template**: Changed from `"{Name}: {Description}"` to `"{Name}: {Description}. Parameters: {Parameters}"`.
+3. **Backward compatible**: If a custom template omits `{Parameters}` and `{InputSchema}`, behavior is unchanged.
+
+#### Trade-offs
+- **Breaking embedding behavior**: The new default produces different embedding vectors, so any persisted indexes will need to be re-created. This is acceptable since the library is pre-1.0.
+- **Longer embedding text**: Including parameters makes the embedding text longer, which could slightly increase embedding generation time but significantly improves routing accuracy.
+
+#### Impact
+- Improved routing accuracy for tools with similar names but different signatures
+- Slightly longer embedding text (negligible performance impact)
+- Better semantic encoding of tool capabilities in vector space
+
+---
+
+### Decision 4.2: EmbeddingServer InternalsVisibleTo
+
+**Date:** 2026-04-04  
+**Agent:** Tron (Core Dev)  
+**Issue:** #2  
+**PR:** #4  
+**Status:** Implemented ✅
+
+#### Context
+Issue #2 required creating a new EmbeddingServer library that exposes MCP tools for managing embedding indexes. The `ToolIndex.CreateEmptyAsync` method is internal but needed by the `manage_index` tool's "create" action.
+
+#### Decision
+Added `InternalsVisibleTo("ElBruno.ModelContextProtocol.EmbeddingServer")` to the MCPToolRouter project.
+
+#### Rationale
+`ToolIndex.CreateEmptyAsync` is internal but needed by the `manage_index` tool's "create" action. Since EmbeddingServer is a first-party library in the same repo that wraps MCPToolRouter, granting internal access is the cleanest approach — avoids workarounds like creating placeholder tools just to get an empty index.
+
+#### Implementation
+- MCPToolRouter: Added `[assembly: InternalsVisibleTo("ElBruno.ModelContextProtocol.EmbeddingServer")]`
+- EmbeddingServer: 4 MCP tools (manage_index, add_tools, remove_tools, search_tools)
+
+#### Impact
+- MCPToolRouter internals are now visible to the EmbeddingServer project
+- No public API surface changes to MCPToolRouter
+- Enables EmbeddingServer to manage indexes via MCP protocol
+
+---
+
+**Last updated:** 2026-04-04T15:30:00Z  
 **Scribe:** Automated decision merger from `.squad/decisions/inbox/` → `decisions.md`

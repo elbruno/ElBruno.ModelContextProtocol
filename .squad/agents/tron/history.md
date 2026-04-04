@@ -591,3 +591,19 @@ Completed comprehensive performance analysis as part of coordinated audit sprint
 - **LLMDistillationDemo results:** Mode 2 won 2/7, tied 3, Mode 1 won 2. Distillation quality good — extracted clear intent phrases from verbose prompts.
 - All 129 unit tests passed after upgrade
 - 16 files changed: 3 csproj edits, 2 README updates, 11 lock file regenerations
+
+### Issue #2: MCP Embedding Server Tools
+- **Pattern**: MCP tools use `[McpServerToolType]` on static class, `[McpServerTool(Name = "...")]` + `[Description("...")]` on methods (ModelContextProtocol.Core v1.0.0)
+- **Architecture**: Used static `ConcurrentDictionary<string, IToolIndex>` for index storage — stateless MCP tools can't rely on DI state
+- **Internal access**: `ToolIndex.CreateEmptyAsync` is internal; added `InternalsVisibleTo` from MCPToolRouter to EmbeddingServer
+- **Key paths**: `src/ElBruno.ModelContextProtocol.EmbeddingServer/EmbeddingTools.cs`, tests in `src/tests/ElBruno.ModelContextProtocol.EmbeddingServer.Tests/`
+- **PR**: #4 on branch `squad/2-mcp-embedding-tools`
+
+### Issue #3: Parameter Schemas in Tool Embedding Text
+- **Pattern**: FormatEmbeddingText now supports {Parameters} and {InputSchema} placeholders in addition to {Name} and {Description}
+- **Parameters format**: `paramName (type) - description`, comma-separated; extracted from Tool.InputSchema JSON properties
+- **Default template changed**: from `{Name}: {Description}` to `{Name}: {Description}. Parameters: {Parameters}` — improves semantic routing accuracy
+- **Tool default InputSchema**: MCP Tool type defaults to `{"type":"object"}` (not JsonValueKind.Undefined) when no schema is set
+- **Key paths**: `src/ElBruno.ModelContextProtocol.MCPToolRouter/ToolIndex.cs` (FormatEmbeddingText, FormatParameters, FormatInputSchema), `ToolIndexOptions.cs` (new template default)
+- **Tests**: 15 new tests in `FormatEmbeddingTextTests.cs` — no ONNX model download needed (pure unit tests on internal static methods)
+- **PR**: #5 on branch `squad/3-tool-indexing-parameter-schemas`

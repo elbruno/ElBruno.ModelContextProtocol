@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Numerics;
+using System.Text;
+using System.Text.Json;
 using ElBruno.LocalEmbeddings;
 using ElBruno.LocalEmbeddings.Options;
 using Microsoft.Extensions.AI;
@@ -452,11 +454,71 @@ public sealed partial class ToolIndex : IToolIndex
             disposable.Dispose();
     }
 
-    private static string FormatEmbeddingText(Tool tool, string template)
+    internal static string FormatEmbeddingText(Tool tool, string template)
     {
-        return template
+        var result = template
             .Replace("{Name}", tool.Name)
             .Replace("{Description}", tool.Description ?? string.Empty);
+
+        if (result.Contains("{Parameters}"))
+        {
+            result = result.Replace("{Parameters}", FormatParameters(tool));
+        }
+
+        if (result.Contains("{InputSchema}"))
+        {
+            result = result.Replace("{InputSchema}", FormatInputSchema(tool));
+        }
+
+        return result;
+    }
+
+    internal static string FormatParameters(Tool tool)
+    {
+        if (tool.InputSchema.ValueKind == JsonValueKind.Undefined ||
+            tool.InputSchema.ValueKind == JsonValueKind.Null)
+        {
+            return string.Empty;
+        }
+
+        if (!tool.InputSchema.TryGetProperty("properties", out var properties) ||
+            properties.ValueKind != JsonValueKind.Object)
+        {
+            return string.Empty;
+        }
+
+        var parts = new List<string>();
+        foreach (var prop in properties.EnumerateObject())
+        {
+            var sb = new StringBuilder(prop.Name);
+
+            if (prop.Value.TryGetProperty("type", out var typeElement) &&
+                typeElement.ValueKind == JsonValueKind.String)
+            {
+                sb.Append(" (").Append(typeElement.GetString()).Append(')');
+            }
+
+            if (prop.Value.TryGetProperty("description", out var descElement) &&
+                descElement.ValueKind == JsonValueKind.String)
+            {
+                sb.Append(" - ").Append(descElement.GetString());
+            }
+
+            parts.Add(sb.ToString());
+        }
+
+        return string.Join(", ", parts);
+    }
+
+    internal static string FormatInputSchema(Tool tool)
+    {
+        if (tool.InputSchema.ValueKind == JsonValueKind.Undefined ||
+            tool.InputSchema.ValueKind == JsonValueKind.Null)
+        {
+            return string.Empty;
+        }
+
+        return tool.InputSchema.GetRawText();
     }
 
     private static float CosineSimilarity(ReadOnlySpan<float> a, ReadOnlySpan<float> b)

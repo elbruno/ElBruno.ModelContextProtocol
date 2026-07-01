@@ -489,15 +489,19 @@ More detailed documentation and examples are available in the [docs/](docs/) fol
 
 This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
 
-## Author
+## 👋 About the Author
 
-**Bruno Capuano** (ElBruno)
+Hi! I'm **ElBruno** 🧡, a passionate developer and content creator exploring AI, .NET, and modern development practices.
 
-- 💻 Blog: https://elbruno.com
-- 📺 YouTube: https://youtube.com/elbruno
-- 💼 LinkedIn: https://linkedin.com/in/elbruno
-- 🐦 Twitter: https://twitter.com/elbruno
-- 🎙️ Podcast: https://notienenombre.com
+**Made with ❤️ by [ElBruno](https://github.com/elbruno)**
+
+If you like this project, consider following my work across platforms:
+
+- 📻 **Podcast**: [No Tienen Nombre](https://notienenombre.com) — Spanish-language episodes on AI, development, and tech culture
+- 💻 **Blog**: [ElBruno.com](https://elbruno.com) — Deep dives on embeddings, RAG, .NET, and local AI
+- 📺 **YouTube**: [youtube.com/elbruno](https://www.youtube.com/elbruno) — Demos, tutorials, and live coding
+- 🔗 **LinkedIn**: [@elbruno](https://www.linkedin.com/in/elbruno/) — Professional updates and insights
+- 𝕏 **Twitter**: [@elbruno](https://www.x.com/elbruno/) — Quick tips, releases, and tech news
 
 ## Acknowledgments
 

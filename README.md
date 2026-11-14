@@ -9,6 +9,8 @@
 
 ElBruno.ModelContextProtocol is a .NET library that makes it easy to find the right tools from Model Context Protocol (MCP) tool definitions. It uses semantic search powered by local embeddings to route prompts to the most relevant tools, enabling intelligent tool selection without external API calls. **By routing prompts to only relevant tools before sending to an LLM, you can reduce token costs by 70–85%.**
 
+The libraries target .NET 8, .NET 10, and .NET 11.
+
 ## Packages
 
 | Package | NuGet | Downloads | Description |

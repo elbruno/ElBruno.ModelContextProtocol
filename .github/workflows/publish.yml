@@ -25,6 +25,7 @@ jobs:
           dotnet-version: |
             8.0.x
             10.0.x
+            11.0.x
       - name: Determine version
         id: version
         env:
@@ -54,8 +55,12 @@ jobs:
         env:
           PACKAGE_VERSION: ${{ steps.version.outputs.version }}
         run: dotnet build ElBruno.ModelContextProtocol.slnx -c Release --no-restore -p:Version="$PACKAGE_VERSION"
-      - name: Test
+      - name: Test .NET 8
         run: dotnet test ElBruno.ModelContextProtocol.slnx -c Release --no-build --framework net8.0
+      - name: Test .NET 10
+        run: dotnet test ElBruno.ModelContextProtocol.slnx -c Release --no-build --framework net10.0
+      - name: Test .NET 11
+        run: dotnet test ElBruno.ModelContextProtocol.slnx -c Release --no-build --framework net11.0
       - name: Pack
         env:
           PACKAGE_VERSION: ${{ steps.version.outputs.version }}

@@ -41,7 +41,7 @@ These instructions define the conventions for ElBruno's .NET NuGet library repos
 ## Project Conventions
 
 ### Library Projects
-- Target `net8.0;net10.0` (multi-target: LTS + latest)
+- Target `net8.0;net10.0;net11.0` (multi-target: supported LTS releases + latest)
 - Package naming: `{Owner}.{ProjectName}.{Feature}` (e.g., `ElBruno.QRCodeGenerator.Svg`)
 - Each packable project must include the NuGet icon:
   ```xml
@@ -52,7 +52,7 @@ These instructions define the conventions for ElBruno's .NET NuGet library repos
 - Enable deterministic CI builds: `<ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>`
 
 ### Test Projects
-- Target `net8.0` only (single target)
+- Target `net8.0;net10.0;net11.0` to validate all supported library frameworks
 - Framework: xUnit with coverlet.collector
 - Naming: `{LibraryProject}.Tests`
 - Location: `src/tests/{LibraryProject}.Tests/`
@@ -111,7 +111,7 @@ Use `"rollForward": "latestMajor"` for flexibility across dev machines and CI:
 ```json
 {
   "sdk": {
-    "version": "8.0.0",
+    "version": "11.0.100",
     "rollForward": "latestMajor"
   }
 }
@@ -154,10 +154,10 @@ Thumbs.db
 
 - **Triggers:** push to `main`, PR to `main`
 - **Runner:** `ubuntu-latest`
-- **SDK:** `dotnet-version: 8.0.x`
+- **SDK:** `dotnet-version: 8.0.x`, `10.0.x`, and `11.0.x`
 - **Commands use solution-level operations** (not per-project)
-- **Use `-p:TargetFrameworks=net8.0`** for restore and build (CI runners may not have preview SDKs)
-- **Use `--framework net8.0`** for test
+- Restore and build all configured target frameworks
+- Run tests for each configured test target framework sequentially to avoid cross-target cache contention
 
 ```yaml
 name: CI Build
@@ -176,13 +176,20 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: |
+            8.0.x
+            10.0.x
+            11.0.x
       - name: Restore
-        run: dotnet restore {ProjectName}.slnx -p:TargetFrameworks=net8.0
+        run: dotnet restore {ProjectName}.slnx
       - name: Build
-        run: dotnet build {ProjectName}.slnx --no-restore -p:TargetFrameworks=net8.0
-      - name: Test
+        run: dotnet build {ProjectName}.slnx --no-restore
+      - name: Test .NET 8
         run: dotnet test {ProjectName}.slnx --no-build --framework net8.0
+      - name: Test .NET 10
+        run: dotnet test {ProjectName}.slnx --no-build --framework net10.0
+      - name: Test .NET 11
+        run: dotnet test {ProjectName}.slnx --no-build --framework net11.0
 ```
 
 ---
@@ -225,21 +232,24 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: |
+            8.0.x
+            10.0.x
+            11.0.x
       - name: Determine version
         id: version
         run: |
           # Extract from release tag, input, or csproj
           # Validate: ^[0-9]+\.[0-9]+\.[0-9]+
       - name: Restore
-        run: dotnet restore {Solution}.slnx -p:TargetFrameworks=net8.0
+        run: dotnet restore {Solution}.slnx
       - name: Build
-        run: dotnet build {Solution}.slnx -c Release --no-restore -p:TargetFrameworks=net8.0 -p:Version=${{ steps.version.outputs.version }}
+        run: dotnet build {Solution}.slnx -c Release --no-restore -p:Version=${{ steps.version.outputs.version }}
       - name: Test
-        run: dotnet test {Solution}.slnx -c Release --no-build --framework net8.0
+        run: dotnet test {Solution}.slnx -c Release --no-build
       - name: Pack
         run: |
-          dotnet pack src/{Package}/{Package}.csproj -c Release --no-build -p:TargetFrameworks=net8.0 -p:Version=${{ steps.version.outputs.version }} --output ./nupkgs
+          dotnet pack src/{Package}/{Package}.csproj -c Release --no-build -p:Version=${{ steps.version.outputs.version }} --output ./nupkgs
           # Repeat for each packable project
       - name: NuGet login (OIDC trusted publishing)
         uses: NuGet/login@v1
@@ -291,7 +301,7 @@ Follow this exact order:
 - Test project naming: `{LibraryProject}.Tests`
 - Tests live in `src/tests/{TestProject}/`
 - All tests must pass before publishing (enforced in both CI and publish workflows)
-- Test projects target `net8.0` only
+- Test projects target `net8.0;net10.0;net11.0` to exercise all supported library frameworks
 
 ---
 

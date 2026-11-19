@@ -1,5 +1,7 @@
+using System.Reflection;
 using System.Text.Json;
 using ElBruno.ModelContextProtocol.EmbeddingServer;
+using ModelContextProtocol.Server;
 using Xunit;
 
 namespace ElBruno.ModelContextProtocol.EmbeddingServer.Tests;
@@ -14,6 +16,25 @@ public class EmbeddingToolsTests : IDisposable
     public void Dispose()
     {
         EmbeddingTools.ResetState();
+    }
+
+    [Fact]
+    public void McpSdk_ExposesEmbeddingToolsWithExpectedNamesAndArguments()
+    {
+        var tools = typeof(EmbeddingTools)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Where(method => method.GetCustomAttribute<McpServerToolAttribute>() is not null)
+            .Select(method => McpServerTool.Create(method, target: null, options: null))
+            .ToDictionary(tool => tool.ProtocolTool.Name, StringComparer.Ordinal);
+
+        Assert.Equal(
+            ["embed_text", "get_embedding_model_status", "manage_index", "search_embeddings"],
+            tools.Keys.Order(StringComparer.Ordinal));
+
+        var embedTextProperties = tools["embed_text"].ProtocolTool.InputSchema.GetProperty("properties");
+        Assert.True(embedTextProperties.TryGetProperty("text", out _));
+        Assert.True(embedTextProperties.TryGetProperty("modelName", out _));
+        Assert.False(embedTextProperties.TryGetProperty("cancellationToken", out _));
     }
 
     #region embed_text Tests

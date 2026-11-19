@@ -101,14 +101,14 @@
       },
       "ElBruno.LocalLLMs": {
         "type": "Transitive",
-        "resolved": "0.24.2",
-        "contentHash": "9KZfj1XgQ+YOPPlxltCEfClJnO7BAzKZU6QD+Qmqg+lq3whOC9g32SCTIWqjF0RU2uX5iYZS3BZJkSpFrMZPog==",
+        "resolved": "0.24.3",
+        "contentHash": "46UP1uGQdf8Or7rNn18zIWwytbe+sr2oi20nhGNP8NuGlHTqxYI6fyndIlmpu/3If5hjOj4PUd2jD3FPt/nR7A==",
         "dependencies": {
           "ElBruno.HuggingFace.Downloader": "1.6.2",
-          "Microsoft.Extensions.AI.Abstractions": "10.8.3",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.5",
-          "Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions": "10.0.5",
-          "Microsoft.Extensions.Logging.Abstractions": "10.0.5",
+          "Microsoft.Extensions.AI.Abstractions": "10.11.0",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.15",
+          "Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions": "10.0.15",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.15",
           "Microsoft.ML.OnnxRuntimeGenAI": "0.15.1"
         }
       },
@@ -263,8 +263,8 @@
       },
       "Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions": {
         "type": "Transitive",
-        "resolved": "10.0.5",
-        "contentHash": "NrIMTy7dpqxAvA6kHAYH8cXID/YgeNOy0OqFKpLtkPu5X4WS/basX91UszANzVrMNRAICJ2GOnGiRxJtsRyEQw=="
+        "resolved": "10.0.15",
+        "contentHash": "lmCikcewVyNa7oBLHoES3TF3LscNPDBHuTquo2hOdGLJEmatiWDGKRdz44TrW7QiWXWDQ8kCxgaJ6WmKulcOZQ=="
       },
       "Microsoft.Extensions.FileProviders.Abstractions": {
         "type": "Transitive",
@@ -432,11 +432,11 @@
       },
       "ModelContextProtocol.Core": {
         "type": "Transitive",
-        "resolved": "1.0.0",
-        "contentHash": "QKboiQEq2MJMGeQ029Gy6xqge88abm0Px9lnG7hueOyf+EDCxi5SUATV+Df7GwT+NwWzkEsYG271bUQD+LGhEg==",
+        "resolved": "2.4.0",
+        "contentHash": "q98pZMlcxhsh0LpGXcT2ow7sGNveCPhDlJT3zJ7Cz5nNyPmPkm8P57dUIUpzv1w6qWbdSZcR/Z+RbZtNYjEmXQ==",
         "dependencies": {
-          "Microsoft.Extensions.AI.Abstractions": "10.3.0",
-          "Microsoft.Extensions.Logging.Abstractions": "10.0.3"
+          "Microsoft.Extensions.AI.Abstractions": "10.11.0",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.14"
         }
       },
       "OpenAI": {
@@ -482,12 +482,12 @@
         "type": "Project",
         "dependencies": {
           "ElBruno.LocalEmbeddings": "[1.6.8, )",
-          "ElBruno.LocalLLMs": "[0.24.2, )",
+          "ElBruno.LocalLLMs": "[0.24.3, )",
           "Microsoft.Extensions.AI.Abstractions": "[11.0.0, )",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[11.0.0, )",
           "Microsoft.Extensions.Logging.Abstractions": "[11.0.0, )",
           "Microsoft.Extensions.Options": "[11.0.0, )",
-          "ModelContextProtocol.Core": "[1.0.0, )"
+          "ModelContextProtocol.Core": "[2.4.0, )"
         }
       }
     }
